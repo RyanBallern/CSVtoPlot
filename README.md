@@ -5,7 +5,7 @@ A comprehensive Python-based tool for neuromorphological data analysis.
 ## Project Status
 
 **Version:** 0.1.0-dev
-**Current Phase:** Step 4 - Data Importers
+**Current Phase:** Step 5 - Database Layer
 
 ## What's Implemented
 
@@ -87,6 +87,40 @@ Complete file import functionality with format-specific and unified importers:
 - **Source Tracking**: Track which file each row came from
 - **Error Handling**: Clear error messages for missing dependencies
 
+### Step 5: Database Layer ✓
+
+Complete database functionality for persistent data storage:
+
+**DatabaseBase (Abstract Interface):**
+- Abstract base class defining database operations
+- Allows easy switching between SQLite and PostgreSQL
+- Consistent API for all database backends
+
+**SQLiteDatabase:**
+- SQLite implementation for single-user workflows
+- Automatic table creation and schema management
+- No server setup required - works with local file
+
+**Data Models:**
+- **Assay**: Represents an experiment/analysis session
+- **Measurement**: Individual data points with parameters
+- Serializable to/from dictionaries for easy storage
+
+**Key Features:**
+- **Assay Management**: Create, retrieve, list, and delete assays
+- **Measurement Storage**: Store DataFrames with metadata
+- **Duplicate Detection**: Prevent duplicate imports from same source file
+- **Condition Filtering**: Filter measurements by experimental condition
+- **Parameter Selection**: Retrieve only specific parameters
+- **Source Tracking**: Track which file measurements came from
+- **Integration**: Works seamlessly with UnifiedImporter
+
+**Database Schema:**
+- `assays` table: Stores experiment metadata
+- `measurements` table: Stores individual data points with JSON parameters
+- Foreign key constraints for data integrity
+- Indexes for fast querying
+
 ## Installation
 
 ### Install Dependencies
@@ -157,6 +191,21 @@ This will run 6 comprehensive tests covering:
 - ParameterMapper integration
 - Multiple file import with source tracking
 
+### Test Database Layer
+
+Run the test script:
+```bash
+python test_database.py
+```
+
+This will run 6 comprehensive tests covering:
+- Basic database operations (create, retrieve, list assays)
+- Measurement storage and retrieval
+- Conditions and parameter filtering
+- Duplicate detection
+- Integration with file importer
+- Data models (Assay and Measurement)
+
 ### Sample Test Files
 
 Located in `test_data/`:
@@ -182,14 +231,22 @@ CSVtoPlot/
 ├── src/
 │   └── neuromorpho_analyzer/
 │       └── core/
-│           └── importers/
+│           ├── importers/
+│           │   ├── __init__.py
+│           │   ├── file_scanner.py (FileScanner + HeaderScanner)
+│           │   ├── parameter_mapper.py (ParameterMapper)
+│           │   ├── csv_importer.py (CSVImporter)
+│           │   ├── json_importer.py (JSONImporter)
+│           │   ├── excel_importer.py (ExcelImporter)
+│           │   └── unified_importer.py (UnifiedImporter)
+│           ├── database/
+│           │   ├── __init__.py
+│           │   ├── base.py (DatabaseBase)
+│           │   └── sqlite.py (SQLiteDatabase)
+│           └── models/
 │               ├── __init__.py
-│               ├── file_scanner.py (FileScanner + HeaderScanner)
-│               ├── parameter_mapper.py (ParameterMapper)
-│               ├── csv_importer.py (CSVImporter)
-│               ├── json_importer.py (JSONImporter)
-│               ├── excel_importer.py (ExcelImporter)
-│               └── unified_importer.py (UnifiedImporter)
+│               ├── assay.py (Assay)
+│               └── measurement.py (Measurement)
 ├── test_data/
 │   ├── 001_Control_001.xlsx
 │   ├── 002_GST_005L.csv
@@ -201,17 +258,17 @@ CSVtoPlot/
 ├── test_header_scanner.py
 ├── test_parameter_mapper.py
 ├── test_importers.py
+├── test_database.py
 ├── create_test_excel_files.py
 └── README.md
 ```
 
 ## Next Steps
 
-Step 5 will implement:
-- Database layer (SQLite and PostgreSQL support)
-- Data models (Assay, Measurement)
-- Duplicate detection and origin tracking
-- Complete import workflow integration
+Step 6 will implement:
+- Statistical analysis engine (normality tests, ANOVA, Tukey HSD)
+- Frequency analysis for distribution plots
+- Integration with database layer for analysis workflows
 
 ## License
 
