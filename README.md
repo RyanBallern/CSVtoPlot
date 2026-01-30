@@ -2,6 +2,27 @@
 
 A comprehensive Python-based tool for neuromorphological data analysis.
 
+## Quick Start
+
+```python
+from neuromorpho_analyzer.core.importers import UnifiedImporter
+from neuromorpho_analyzer.core.database import SQLiteDatabase
+
+# Import a data file (auto-detects CSV, Excel, JSON)
+data = UnifiedImporter.import_file('mydata.csv')
+
+# Store in database
+with SQLiteDatabase('mydata.db') as db:
+    assay_id = db.insert_assay("My Experiment")
+    db.insert_measurements(assay_id, data, condition='Control')
+
+    # Retrieve and analyze
+    stored_data = db.get_measurements(assay_id)
+    print(f"Stored {len(stored_data)} measurements")
+```
+
+See [USAGE_GUIDE.md](USAGE_GUIDE.md) for detailed tutorials and [examples/](examples/) for complete working scripts.
+
 ## Project Status
 
 **Version:** 0.1.0-dev
@@ -247,21 +268,62 @@ CSVtoPlot/
 │               ├── __init__.py
 │               ├── assay.py (Assay)
 │               └── measurement.py (Measurement)
+│
+├── examples/
+│   ├── README.md
+│   ├── example_1_simple_import.py
+│   ├── example_2_selective_import.py
+│   └── example_3_batch_import_to_database.py
+│
 ├── test_data/
 │   ├── 001_Control_001.xlsx
 │   ├── 002_GST_005L.csv
 │   ├── 003_Treatment_010T.json
 │   ├── 004_Control_002.xls
 │   └── 005_Invalid.txt
+│
 ├── requirements.txt
+├── README.md
+├── USAGE_GUIDE.md
 ├── test_file_scanner.py
 ├── test_header_scanner.py
 ├── test_parameter_mapper.py
 ├── test_importers.py
 ├── test_database.py
-├── create_test_excel_files.py
-└── README.md
+├── test_integration.py
+└── create_test_excel_files.py
 ```
+
+## Examples and Resources
+
+### Example Scripts
+
+The `examples/` directory contains practical, runnable examples:
+
+- **example_1_simple_import.py** - Basic file import and display
+- **example_2_selective_import.py** - Import only specific parameters
+- **example_3_batch_import_to_database.py** - Import multiple files into database
+
+Run any example:
+```bash
+python examples/example_1_simple_import.py
+```
+
+### Documentation
+
+- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete usage guide with tutorials
+- **[examples/README.md](examples/README.md)** - Examples documentation
+- **README.md** (this file) - API reference and project overview
+
+### Integration Test
+
+Run the comprehensive integration test to verify the complete pipeline:
+
+```bash
+python test_integration.py
+```
+
+This tests the full workflow from file scanning through database storage.
 
 ## Next Steps
 
