@@ -1,0 +1,25 @@
+{
+  "measurements": [
+    {
+      "Length": 156.2,
+      "Branch Points": 7,
+      "Terminal Points": 10,
+      "Average Diameter": 2.4,
+      "Total Volume": 620.8
+    },
+    {
+      "Length": 134.5,
+      "Branch Points": 6,
+      "Terminal Points": 9,
+      "Average Diameter": 2.2,
+      "Total Volume": 550.3
+    },
+    {
+      "Length": 145.7,
+      "Branch Points": 8,
+      "Terminal Points": 11,
+      "Average Diameter": 2.5,
+      "Total Volume": 680.5
+    }
+  ]
+}
