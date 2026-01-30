@@ -5,7 +5,7 @@ A comprehensive Python-based tool for neuromorphological data analysis.
 ## Project Status
 
 **Version:** 0.1.0-dev
-**Current Phase:** Step 2 - Header Scanner
+**Current Phase:** Step 3 - Parameter Mapper
 
 ## What's Implemented
 
@@ -35,6 +35,23 @@ The `HeaderScanner` class can:
 - **XLSX**: Requires `openpyxl` package
 - **CSV**: Requires `pandas` package (auto-detects delimiter)
 - **JSON**: Native Python support (no extra dependencies)
+
+### Step 3: ParameterMapper ✓
+
+The `ParameterMapper` class can:
+- Dynamically select which columns/parameters to import from data files
+- Select all or specific parameters from available headers
+- Add custom parameters not present in file headers
+- Create parameter aliases (short names for long parameter names)
+- Serialize/deserialize configuration for saving analysis profiles
+- Track standard vs custom parameters separately
+
+**Key Features:**
+- **Select Parameters**: Choose specific columns from available headers
+- **Custom Parameters**: Add computed or derived parameters
+- **Parameter Aliases**: Create shortcuts (e.g., "Len" → "Length")
+- **Save/Load**: Export configuration as dictionary for profiles
+- **Integration**: Works seamlessly with HeaderScanner output
 
 ## Installation
 
@@ -75,6 +92,22 @@ python test_header_scanner.py
 
 This will attempt to read headers from all test files and show which dependencies are missing.
 
+### Test ParameterMapper
+
+Run the test script:
+```bash
+python test_parameter_mapper.py
+```
+
+This will run 7 comprehensive tests covering:
+- Basic parameter selection
+- Select all functionality
+- Custom parameters
+- Parameter aliases
+- Serialization (save/load)
+- Integration with real files
+- Deselection and clearing
+
 ### Sample Test Files
 
 Located in `test_data/`:
@@ -102,7 +135,8 @@ CSVtoPlot/
 │       └── core/
 │           └── importers/
 │               ├── __init__.py
-│               └── file_scanner.py (FileScanner + HeaderScanner)
+│               ├── file_scanner.py (FileScanner + HeaderScanner)
+│               └── parameter_mapper.py (ParameterMapper)
 ├── test_data/
 │   ├── 001_Control_001.xlsx
 │   ├── 002_GST_005L.csv
@@ -112,16 +146,18 @@ CSVtoPlot/
 ├── requirements.txt
 ├── test_file_scanner.py
 ├── test_header_scanner.py
+├── test_parameter_mapper.py
 ├── create_test_excel_files.py
 └── README.md
 ```
 
 ## Next Steps
 
-Step 3 will implement:
-- ParameterMapper - Dynamic parameter selection from available headers
-- Allow users to select which columns to import
-- Support for custom parameter names
+Step 4 will implement:
+- Data importers for XLS, XLSX, CSV, and JSON files
+- Unified importer that works with all formats
+- Integration with FileScanner, HeaderScanner, and ParameterMapper
+- Data validation and duplicate detection
 
 ## License
 
