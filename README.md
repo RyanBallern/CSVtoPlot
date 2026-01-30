@@ -5,7 +5,7 @@ A comprehensive Python-based tool for neuromorphological data analysis.
 ## Project Status
 
 **Version:** 0.1.0-dev
-**Current Phase:** Step 3 - Parameter Mapper
+**Current Phase:** Step 4 - Data Importers
 
 ## What's Implemented
 
@@ -52,6 +52,40 @@ The `ParameterMapper` class can:
 - **Parameter Aliases**: Create shortcuts (e.g., "Len" → "Length")
 - **Save/Load**: Export configuration as dictionary for profiles
 - **Integration**: Works seamlessly with HeaderScanner output
+
+### Step 4: Data Importers ✓
+
+Complete file import functionality with format-specific and unified importers:
+
+**CSVImporter:**
+- Import data from CSV files with auto-delimiter detection
+- Filter to selected parameters only
+- Get row count without loading full file
+
+**JSONImporter:**
+- Import from JSON files (multiple structure support)
+- Handle list, dict, and single-object formats
+- Extract measurement data with parameter filtering
+
+**ExcelImporter:**
+- Import from both XLS and XLSX files
+- Multi-sheet support
+- Get sheet names and row counts
+
+**UnifiedImporter (recommended):**
+- Auto-detect file format and use appropriate importer
+- Works with all supported formats (XLS, XLSX, CSV, JSON)
+- Integrate with ParameterMapper for selective import
+- Import multiple files and combine into single DataFrame
+- Add source file tracking
+
+**Key Features:**
+- **Format Auto-Detection**: Automatically uses correct importer for file type
+- **Parameter Filtering**: Import only selected columns
+- **ParameterMapper Integration**: Use mapper to control what gets imported
+- **Multiple File Support**: Combine data from multiple files
+- **Source Tracking**: Track which file each row came from
+- **Error Handling**: Clear error messages for missing dependencies
 
 ## Installation
 
@@ -108,6 +142,21 @@ This will run 7 comprehensive tests covering:
 - Integration with real files
 - Deselection and clearing
 
+### Test Data Importers
+
+Run the test script:
+```bash
+python test_importers.py
+```
+
+This will run 6 comprehensive tests covering:
+- CSV importer with parameter filtering
+- JSON importer with measurement extraction
+- Excel importer (both XLS and XLSX)
+- Unified importer with auto-format detection
+- ParameterMapper integration
+- Multiple file import with source tracking
+
 ### Sample Test Files
 
 Located in `test_data/`:
@@ -136,7 +185,11 @@ CSVtoPlot/
 │           └── importers/
 │               ├── __init__.py
 │               ├── file_scanner.py (FileScanner + HeaderScanner)
-│               └── parameter_mapper.py (ParameterMapper)
+│               ├── parameter_mapper.py (ParameterMapper)
+│               ├── csv_importer.py (CSVImporter)
+│               ├── json_importer.py (JSONImporter)
+│               ├── excel_importer.py (ExcelImporter)
+│               └── unified_importer.py (UnifiedImporter)
 ├── test_data/
 │   ├── 001_Control_001.xlsx
 │   ├── 002_GST_005L.csv
@@ -147,17 +200,18 @@ CSVtoPlot/
 ├── test_file_scanner.py
 ├── test_header_scanner.py
 ├── test_parameter_mapper.py
+├── test_importers.py
 ├── create_test_excel_files.py
 └── README.md
 ```
 
 ## Next Steps
 
-Step 4 will implement:
-- Data importers for XLS, XLSX, CSV, and JSON files
-- Unified importer that works with all formats
-- Integration with FileScanner, HeaderScanner, and ParameterMapper
-- Data validation and duplicate detection
+Step 5 will implement:
+- Database layer (SQLite and PostgreSQL support)
+- Data models (Assay, Measurement)
+- Duplicate detection and origin tracking
+- Complete import workflow integration
 
 ## License
 
