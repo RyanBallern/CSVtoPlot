@@ -1,0 +1,112 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+from typing import Dict, Optional
+import numpy as np
+
+from .plot_config import PlotConfig
+from .significance_annotator import SignificanceAnnotator
+
+
+class FrequencyPlotter:
+    """Creates frequency distribution plots."""
+
+    def __init__(self, plot_config: PlotConfig):
+        self.config = plot_config
+        self.annotator = SignificanceAnnotator()
+
+    def create_frequency_plot(self, distributions: Dict[str, pd.DataFrame],
+                            title: str, value_type: str = 'count',
+                            bin_comparisons: Optional[pd.DataFrame] = None) -> plt.Figure:
+        """
+        Create frequency distribution plot.
+
+        Args:
+            distributions: Dict mapping conditions to frequency DataFrames
+            title: Plot title
+            value_type: 'count' or 'relative'
+            bin_comparisons: DataFrame with per-bin significance results
+
+        Returns:
+            Matplotlib figure
+        """
+        # Determine order
+        if self.config.plotting_order:
+            conditions = [c for c in self.config.plotting_order if c in distributions]
+        else:
+            conditions = sorted(distributions.keys())
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Get all bins
+        all_bins = set()
+        for dist in distributions.values():
+            all_bins.update(zip(dist['bin_start'], dist['bin_end']))
+        all_bins = sorted(all_bins)
+
+        # Create grouped bar chart
+        n_conditions = len(conditions)
+        n_bins = len(all_bins)
+        bar_width = 0.8 / n_conditions
+
+        x = np.arange(n_bins)
+
+        for i, condition in enumerate(conditions):
+            dist = distributions[condition]
+
+            # Extract values for each bin
+            values = []
+            for bin_start, bin_end in all_bins:
+                row = dist[(dist['bin_start'] == bin_start) &
+                          (dist['bin_end'] == bin_end)]
+                if not row.empty:
+                    if value_type == 'count':
+                        values.append(row['count'].values[0])
+                    else:
+                        values.append(row['relative_freq'].values[0])
+                else:
+                    values.append(0)
+
+            # Plot bars
+            offset = (i - n_conditions/2 + 0.5) * bar_width
+            color = self.config.get_color(condition)
+            ax.bar(x + offset, values, bar_width,
+                  label=self.config.get_full_name(condition),
+                  color=color, edgecolor='black', linewidth=1)
+
+        # Set x-axis labels (bin ranges)
+        bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]
+        ax.set_xticks(x)
+        ax.set_xticklabels(bin_labels, rotation=45, ha='right')
+
+        # Labels
+        ax.set_xlabel('Bin Range', fontsize=12, fontweight='bold')
+        ylabel = 'Count' if value_type == 'count' else 'Relative Frequency'
+        ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
+        ax.set_title(title, fontsize=14, fontweight='bold')
+
+        # Legend
+        ax.legend(frameon=False)
+
+        # Apply base styling
+        self.config.apply_base_style(ax)
+
+        # Add significance markers if provided
+        if bin_comparisons is not None:
+            self._add_bin_significance_markers(ax, bin_comparisons, x)
+
+        plt.tight_layout()
+        return fig
+
+    def _add_bin_significance_markers(self, ax: plt.Axes,
+                                     bin_comparisons: pd.DataFrame,
+                                     bin_positions: np.ndarray) -> None:
+        """Add significance markers above bins."""
+        y_max = ax.get_ylim()[1]
+
+        for idx, row in bin_comparisons.iterrows():
+            if row['significant']:
+                stars = self.annotator.get_significance_stars(row['p_value'])
+                if stars:
+                    ax.text(bin_positions[idx], y_max * 0.95, stars,
+                           ha='center', va='top', fontsize=10, fontweight='bold')
