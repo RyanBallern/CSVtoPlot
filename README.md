@@ -180,6 +180,63 @@ Comprehensive statistical analysis engine with automatic test selection:
 - **Comprehensive Results**: Detailed statistics, p-values, effect sizes
 - **Formatted Output**: Human-readable summary reports
 
+### Step 7: Plotting Engine ✓
+
+Publication-quality plotting system with significance annotations:
+
+**PlotConfig:**
+- Customizable condition colors (hex or RGB)
+- Condition name mapping (short → full display names)
+- Plotting order control
+- Y-axis range configuration
+- Scatter dot overlay settings (show/hide, transparency, size, jitter)
+- Profile serialization (save/load configurations)
+
+**SignificanceAnnotator:**
+- Automatic significance bracket placement
+- Star notation for p-values (*, **, ***)
+- Smart bracket layering to avoid overlaps
+- Adjustable bracket heights
+
+**BoxPlotter:**
+- Box plots with quartiles and outliers
+- Mean markers (red diamonds)
+- SEM error bars
+- Optional scatter dot overlay with jitter
+- Significance brackets with stars
+- Custom colors per condition
+- Sample size (n) annotations
+
+**BarPlotter:**
+- Bar plots with means
+- SEM error bars (bidirectional)
+- Optional scatter dot overlay with jitter
+- Significance brackets with stars
+- Custom colors per condition
+- Sample size (n) annotations
+
+**FrequencyPlotter:**
+- Grouped bar charts for frequency distributions
+- Bin range labels
+- Count or relative frequency modes
+- Per-bin significance markers
+- Legend with full condition names
+
+**PlotExporter:**
+- High-resolution export (800 DPI default)
+- Multiple format support: PNG, TIF/TIFF, PDF, SVG
+- Batch export of multiple figures
+- Tight bounding boxes
+- White backgrounds for publications
+
+**Key Features:**
+- **Professional Styling**: Clean, publication-ready appearance
+- **Scatter Overlay**: Toggle individual data points on/off
+- **Significance Annotation**: Automatic bracket placement with p-value stars
+- **Custom Colors**: User-defined or hash-generated colors
+- **Flexible Layout**: Configurable plot ranges and orders
+- **High Resolution**: 800 DPI exports for journal submissions
+
 ## Installation
 
 ### Install Dependencies
@@ -295,6 +352,23 @@ This will run 4 comprehensive tests covering:
 - Multiple parameter comparison (Sholl analysis with 10 distances)
 - Distance comparison wrapper (branch depth analysis)
 
+### Test Plotting Engine
+
+Run the test script:
+```bash
+python test_plotting.py
+```
+
+This will run 8 comprehensive tests covering:
+- PlotConfig configuration and serialization
+- SignificanceAnnotator star notation
+- BoxPlotter with scatter overlay
+- BoxPlotter without scatter dots
+- BarPlotter with scatter overlay
+- FrequencyPlotter with frequency distributions
+- PlotExporter high-resolution export
+- Integrated plotting workflow (statistics → plots → export)
+
 ### Sample Test Files
 
 Located in `test_data/`:
@@ -336,9 +410,17 @@ CSVtoPlot/
 │           │   ├── __init__.py
 │           │   ├── assay.py (Assay)
 │           │   └── measurement.py (Measurement)
-│           └── processors/
+│           ├── processors/
+│           │   ├── __init__.py
+│           │   └── statistics.py (StatisticsEngine)
+│           └── plotters/
 │               ├── __init__.py
-│               └── statistics.py (StatisticsEngine)
+│               ├── plot_config.py (PlotConfig)
+│               ├── significance_annotator.py (SignificanceAnnotator)
+│               ├── box_plotter.py (BoxPlotter)
+│               ├── bar_plotter.py (BarPlotter)
+│               ├── frequency_plotter.py (FrequencyPlotter)
+│               └── plot_exporter.py (PlotExporter)
 │
 ├── examples/
 │   ├── README.md
@@ -363,6 +445,7 @@ CSVtoPlot/
 ├── test_database.py
 ├── test_statistics.py
 ├── test_two_way_anova.py
+├── test_plotting.py
 ├── test_integration.py
 └── create_test_excel_files.py
 ```
