@@ -607,30 +607,149 @@ class NeuromorphoAnalyzerApp:
                 all_files.extend(dirpath.glob(f'*{ext}'))
 
             if all_files:
-                # Create file info dicts with condition from filename
-                files = []
-                for filepath in sorted(all_files):
-                    # Try to extract condition from 3rd substring (index 2)
-                    stem = filepath.stem
-                    parts = stem.replace('-', '_').split('_')
-                    # Use 3rd part if available, else 2nd, else whole stem
-                    if len(parts) >= 3:
-                        condition = parts[2]
-                    elif len(parts) >= 2:
-                        condition = parts[1]
-                    else:
-                        condition = stem
-                    files.append({
-                        'path': filepath,
-                        'condition': condition,
-                        'file_format': filepath.suffix[1:]
-                    })
+                # Show filename structure analysis dialog
+                self._show_filename_structure_dialog(sorted(all_files))
+                return
 
         if files:
             # Show condition assignment dialog
             self._show_condition_assignment_dialog(files)
         else:
             messagebox.showinfo("No Files", "No supported files found in directory.\n\nSupported formats: .csv, .xlsx, .xls, .json")
+
+    def _show_filename_structure_dialog(self, all_files: List[Path]):
+        """Analyze filename structure and let user choose condition substring."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Filename Structure Analysis")
+        dialog.geometry("800x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # Analyze filename structure
+        sample_files = all_files[:10]  # Use first 10 files as samples
+
+        # Parse filenames into parts
+        file_parts = []
+        max_parts = 0
+        for filepath in sample_files:
+            stem = filepath.stem
+            # Split by common delimiters
+            parts = stem.replace('-', '_').replace('.', '_').split('_')
+            file_parts.append((filepath.name, parts))
+            max_parts = max(max_parts, len(parts))
+
+        ttk.Label(dialog, text="Filename Structure Analysis",
+                  font=('TkDefaultFont', 12, 'bold')).pack(pady=10)
+
+        ttk.Label(dialog, text="Sample filenames split by '_' delimiter:").pack(anchor='w', padx=10)
+
+        # Show filename structure table
+        table_frame = ttk.Frame(dialog)
+        table_frame.pack(fill='both', expand=True, padx=10, pady=5)
+
+        # Create treeview
+        columns = ['Filename'] + [f'Part {i+1}' for i in range(max_parts)]
+        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=8)
+
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=100 if col != 'Filename' else 200)
+
+        vsb = ttk.Scrollbar(table_frame, orient='vertical', command=tree.yview)
+        hsb = ttk.Scrollbar(table_frame, orient='horizontal', command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        tree.grid(row=0, column=0, sticky='nsew')
+        vsb.grid(row=0, column=1, sticky='ns')
+        hsb.grid(row=1, column=0, sticky='ew')
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
+
+        # Populate table
+        for filename, parts in file_parts:
+            row = [filename] + parts + [''] * (max_parts - len(parts))
+            tree.insert('', 'end', values=row)
+
+        # Show unique values per part position
+        ttk.Label(dialog, text="\nUnique values found in each position:",
+                  font=('TkDefaultFont', 10, 'bold')).pack(anchor='w', padx=10, pady=(10, 5))
+
+        unique_frame = ttk.Frame(dialog)
+        unique_frame.pack(fill='x', padx=10)
+
+        part_uniques = []
+        for i in range(max_parts):
+            values = set()
+            for _, parts in file_parts:
+                if i < len(parts):
+                    values.add(parts[i])
+            part_uniques.append(sorted(values))
+
+            # Show unique values (truncated)
+            values_str = ', '.join(list(values)[:5])
+            if len(values) > 5:
+                values_str += f'... ({len(values)} unique)'
+            ttk.Label(unique_frame, text=f"Part {i+1}: {values_str}").pack(anchor='w')
+
+        # Selection frame
+        select_frame = ttk.LabelFrame(dialog, text="Select Condition Position", padding=10)
+        select_frame.pack(fill='x', padx=10, pady=10)
+
+        ttk.Label(select_frame, text="Which part contains the CONDITION?").pack(anchor='w')
+
+        condition_pos_var = tk.IntVar(value=1)
+
+        # Radio buttons for each position
+        radio_frame = ttk.Frame(select_frame)
+        radio_frame.pack(fill='x', pady=5)
+
+        for i in range(max_parts):
+            # Find most descriptive sample value
+            sample_val = part_uniques[i][0] if part_uniques[i] else "?"
+            ttk.Radiobutton(
+                radio_frame,
+                text=f"Part {i+1} (e.g., '{sample_val}')",
+                variable=condition_pos_var,
+                value=i
+            ).pack(side='left', padx=10)
+
+        # Custom delimiter option
+        delim_frame = ttk.Frame(select_frame)
+        delim_frame.pack(fill='x', pady=5)
+
+        ttk.Label(delim_frame, text="Or use custom delimiter:").pack(side='left')
+        custom_delim_var = tk.StringVar(value='_')
+        ttk.Entry(delim_frame, textvariable=custom_delim_var, width=5).pack(side='left', padx=5)
+
+        def apply_selection():
+            condition_pos = condition_pos_var.get()
+            delimiter = custom_delim_var.get() or '_'
+
+            # Create file info with selected condition position
+            files = []
+            for filepath in all_files:
+                stem = filepath.stem
+                parts = stem.replace('-', delimiter).split(delimiter)
+
+                if condition_pos < len(parts):
+                    condition = parts[condition_pos]
+                else:
+                    condition = stem
+
+                files.append({
+                    'path': filepath,
+                    'condition': condition,
+                    'file_format': filepath.suffix[1:]
+                })
+
+            dialog.destroy()
+            self._show_condition_assignment_dialog(files)
+
+        # Buttons
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=10)
+        ttk.Button(button_frame, text="Apply & Continue", command=apply_selection).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
 
     def _show_condition_assignment_dialog(self, files: List[Dict]):
         """Show dialog to assign conditions to files."""
