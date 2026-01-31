@@ -41,10 +41,11 @@ class BarPlotter:
         else:
             conditions = sorted(data.keys())
 
-        # Calculate figure size: 1 cm = 0.3937 inches per condition (max)
-        cm_per_condition = 1.0
+        # Calculate figure size: max 1.5 cm per condition for even spacing
+        cm_per_condition = 1.5
         inches_per_condition = cm_per_condition * 0.3937
-        width = max(len(conditions) * inches_per_condition + 2, 4)  # Min 4 inches
+        # Add margins: 1.5 inches on each side for labels
+        width = (len(conditions) * inches_per_condition) + 3
         height = 6
 
         # Create figure
@@ -103,10 +104,11 @@ class BarPlotter:
                           zorder=3)
 
         # Set x-axis labels (use full names) with increased font size
+        # Center labels over bars
         ax.set_xticks(positions)
         ax.set_xticklabels(
             [self.config.get_full_name(c) for c in conditions],
-            rotation=45, ha='right', fontsize=12
+            rotation=45, ha='center', fontsize=12, rotation_mode='anchor'
         )
 
         # Remove x-axis ticks for categorical data
@@ -145,14 +147,22 @@ class BarPlotter:
         # Add significance brackets (this will adjust y-limits)
         self.annotator.add_brackets(ax, comparisons, position_map)
 
-        # Round y_max to nearest tick value
+        # Round y_max to nearest tick value and set final limits
         yticks = ax.get_yticks()
-        # Find the first tick >= current y_max
         current_ymax = ax.get_ylim()[1]
+
+        # Find the first tick >= current y_max
+        final_ymax = None
         for tick in yticks:
             if tick >= current_ymax:
-                ax.set_ylim(y_min, tick)
+                final_ymax = tick
                 break
+
+        if final_ymax is not None:
+            ax.set_ylim(y_min, final_ymax)
+            # Filter ticks to only show those within the range
+            visible_ticks = [t for t in yticks if y_min <= t <= final_ymax]
+            ax.set_yticks(visible_ticks)
 
         # Add n-numbers at the bottom of each bar (inside or just above x-axis)
         for i, condition in enumerate(conditions):
