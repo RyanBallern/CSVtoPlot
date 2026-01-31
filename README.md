@@ -26,7 +26,7 @@ See [USAGE_GUIDE.md](USAGE_GUIDE.md) for detailed tutorials and [examples/](exam
 ## Project Status
 
 **Version:** 0.1.0-dev
-**Current Phase:** Step 5 - Database Layer
+**Current Phase:** Step 6 - Statistical Analysis
 
 ## What's Implemented
 
@@ -142,6 +142,44 @@ Complete database functionality for persistent data storage:
 - Foreign key constraints for data integrity
 - Indexes for fast querying
 
+### Step 6: Statistical Analysis ✓
+
+Comprehensive statistical analysis engine with automatic test selection:
+
+**StatisticsEngine:**
+- Normality testing (Shapiro-Wilk)
+- Parametric tests: Independent t-test, One-way ANOVA
+- Non-parametric tests: Mann-Whitney U, Kruskal-Wallis H
+- Post-hoc analysis: Tukey HSD with confidence intervals
+- Effect size calculations (Cohen's d, eta-squared)
+- Automatic test selection based on data distribution
+
+**Key Features:**
+- **Automatic Test Selection**:
+  - 2 groups: t-test (parametric) or Mann-Whitney U (non-parametric)
+  - 3+ groups: ANOVA (parametric) or Kruskal-Wallis (non-parametric)
+  - Automatic normality testing to choose appropriate test
+- **Normality Testing**: Shapiro-Wilk test for each group
+- **T-Tests**:
+  - Independent samples t-test with equal/unequal variances
+  - Cohen's d effect size
+  - Mean differences and standard deviations
+- **Mann-Whitney U**: Non-parametric alternative for 2 groups
+- **ANOVA**:
+  - One-way ANOVA with eta-squared effect size
+  - Two-way ANOVA for two independent factors (e.g., Condition × Distance)
+  - Interaction effects and main effects
+- **Kruskal-Wallis**: Non-parametric alternative for 3+ groups
+- **Friedman Test**: Non-parametric repeated measures/matched groups
+- **Post-hoc Analysis**: Tukey HSD for pairwise comparisons after ANOVA
+- **Multi-Parameter Comparison**:
+  - Compare multiple parameters across conditions simultaneously
+  - Perfect for Sholl analysis (multiple distances)
+  - Branch depth analysis (multiple depth levels)
+  - Frequency distributions (multiple bins)
+- **Comprehensive Results**: Detailed statistics, p-values, effect sizes
+- **Formatted Output**: Human-readable summary reports
+
 ## Installation
 
 ### Install Dependencies
@@ -227,6 +265,36 @@ This will run 6 comprehensive tests covering:
 - Integration with file importer
 - Data models (Assay and Measurement)
 
+### Test Statistical Analysis
+
+Run the test script:
+```bash
+python test_statistics.py
+```
+
+This will run 8 comprehensive tests covering:
+- Normality testing (Shapiro-Wilk)
+- Independent t-test (parametric)
+- Mann-Whitney U test (non-parametric)
+- One-way ANOVA
+- Tukey HSD post-hoc test
+- Kruskal-Wallis H test
+- Automatic test selection (2 groups)
+- Automatic test selection (3+ groups)
+
+### Test Two-Way ANOVA and Multi-Parameter Analysis
+
+Run the test script:
+```bash
+python test_two_way_anova.py
+```
+
+This will run 4 comprehensive tests covering:
+- Two-way ANOVA with interaction effects (Condition × Distance)
+- Friedman test (non-parametric repeated measures)
+- Multiple parameter comparison (Sholl analysis with 10 distances)
+- Distance comparison wrapper (branch depth analysis)
+
 ### Sample Test Files
 
 Located in `test_data/`:
@@ -264,10 +332,13 @@ CSVtoPlot/
 │           │   ├── __init__.py
 │           │   ├── base.py (DatabaseBase)
 │           │   └── sqlite.py (SQLiteDatabase)
-│           └── models/
+│           ├── models/
+│           │   ├── __init__.py
+│           │   ├── assay.py (Assay)
+│           │   └── measurement.py (Measurement)
+│           └── processors/
 │               ├── __init__.py
-│               ├── assay.py (Assay)
-│               └── measurement.py (Measurement)
+│               └── statistics.py (StatisticsEngine)
 │
 ├── examples/
 │   ├── README.md
@@ -290,23 +361,10 @@ CSVtoPlot/
 ├── test_parameter_mapper.py
 ├── test_importers.py
 ├── test_database.py
+├── test_statistics.py
+├── test_two_way_anova.py
 ├── test_integration.py
 └── create_test_excel_files.py
-```
-
-## Examples and Resources
-
-### Example Scripts
-
-The `examples/` directory contains practical, runnable examples:
-
-- **example_1_simple_import.py** - Basic file import and display
-- **example_2_selective_import.py** - Import only specific parameters
-- **example_3_batch_import_to_database.py** - Import multiple files into database
-
-Run any example:
-```bash
-python examples/example_1_simple_import.py
 ```
 
 ### Documentation
@@ -327,10 +385,12 @@ This tests the full workflow from file scanning through database storage.
 
 ## Next Steps
 
-Step 6 will implement:
-- Statistical analysis engine (normality tests, ANOVA, Tukey HSD)
-- Frequency analysis for distribution plots
-- Integration with database layer for analysis workflows
+Future enhancements could include:
+- Plotting engine (box plots, bar plots, frequency distributions)
+- Significance annotations for plots
+- GraphPad Prism export (.pzfx format)
+- GUI interface (tkinter-based)
+- CLI commands for common workflows
 
 ## License
 
