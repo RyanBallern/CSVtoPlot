@@ -3,7 +3,7 @@
 from .export_config import ExportConfig
 from .parameter_selector import ExportParameterSelector
 from .statistics_table_exporter import StatisticsTableExporter
-from .excel_exporter import ExcelExporter
+from .excel_exporter import ExcelExporter, ExcelExporterSimple
 from .graphpad_exporter import GraphPadExporter
 
 __all__ = [
@@ -11,5 +11,6 @@ __all__ = [
     'ExportParameterSelector',
     'StatisticsTableExporter',
     'ExcelExporter',
+    'ExcelExporterSimple',
     'GraphPadExporter',
 ]
