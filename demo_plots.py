@@ -30,8 +30,8 @@ def create_demo_plots():
     print()
 
     # Create output directory
-    output_dir = Path(__file__).parent / 'demo_output'
-    output_dir.mkdir(exist_ok=True)
+    output_dir = Path.home() / 'Documents' / 'PythonScripts' / 'CSVtoPlot' / 'CSVtoPlot' / 'demo_output'
+    output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {output_dir}")
     print()
 
