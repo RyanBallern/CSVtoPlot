@@ -104,15 +104,16 @@ class BarPlotter:
                           zorder=3)
 
         # Set x-axis labels (use full names) with increased font size
-        # Center labels over bars
+        # Right-align labels: upper corner aligns with bar center
         ax.set_xticks(positions)
         ax.set_xticklabels(
             [self.config.get_full_name(c) for c in conditions],
-            rotation=45, ha='center', fontsize=12, rotation_mode='anchor'
+            rotation=45, ha='right', fontsize=12, rotation_mode='anchor'
         )
 
         # Remove x-axis ticks for categorical data
-        ax.tick_params(axis='x', which='both', bottom=False, top=False)
+        # Add 6mm (≈17 points) spacing between axis and labels
+        ax.tick_params(axis='x', which='both', bottom=False, top=False, pad=17)
 
         # Set labels with increased font size
         # Add unit in brackets if provided, then formula in italics if provided
