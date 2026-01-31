@@ -80,9 +80,13 @@ class FrequencyPlotter:
                   color=color, edgecolor='black', linewidth=1)
 
         # Set x-axis labels (bin ranges) with increased font size
+        # Right-align labels: upper corner aligns with bin center
         bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]
         ax.set_xticks(x)
-        ax.set_xticklabels(bin_labels, rotation=45, ha='right', fontsize=12)
+        ax.set_xticklabels(bin_labels, rotation=45, ha='right', fontsize=12, rotation_mode='anchor')
+
+        # Add 3mm (≈8 points) spacing between axis and labels (half of box/bar plots)
+        ax.tick_params(axis='x', which='both', bottom=False, top=False, pad=8)
 
         # Labels with increased font size
         ax.set_xlabel('Bin Range', fontsize=14, fontweight='bold')
@@ -183,9 +187,13 @@ class FrequencyPlotter:
                    label=self.config.get_full_name(condition))
 
         # Set x-axis labels (bin ranges) with increased font size
+        # Right-align labels: upper corner aligns with bin center
         bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]
         ax.set_xticks(x)
-        ax.set_xticklabels(bin_labels, rotation=45, ha='right', fontsize=12)
+        ax.set_xticklabels(bin_labels, rotation=45, ha='right', fontsize=12, rotation_mode='anchor')
+
+        # Add 3mm (≈8 points) spacing between axis and labels (half of box/bar plots)
+        ax.tick_params(axis='x', which='both', bottom=False, top=False, pad=8)
 
         # Labels with increased font size
         ax.set_xlabel('Bin Range', fontsize=14, fontweight='bold')
