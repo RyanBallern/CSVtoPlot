@@ -46,7 +46,7 @@ python demo_export.py
 
 **Expected output:**
 - Creates test database with 3 conditions and 3 parameters
-- Generates 3 export files in `~/Documents/PythonScripts/CSVtoPlot/CSVtoPlot/demo_output/`:
+- Generates 3 export files in `./demo_output/` (relative to current directory):
   - `statistics_tables_Neurite_Length.xlsx` - Statistics tables with ANOVA
   - `analysis_[timestamp]_assays1.xlsx` - Comprehensive Excel export
   - `graphpad_[timestamp]_assays1.pzfx` - GraphPad Prism format
@@ -84,9 +84,11 @@ Look for which step fails (1-6). The diagnostic test will show the exact error.
 
 **Check output directory permissions:**
 ```bash
-mkdir -p ~/Documents/PythonScripts/CSVtoPlot/CSVtoPlot/demo_output
-ls -ld ~/Documents/PythonScripts/CSVtoPlot/CSVtoPlot/demo_output
+mkdir -p ./demo_output
+ls -ld ./demo_output
 ```
+
+**Note:** Output files are created in `./demo_output/` relative to your current working directory.
 
 **Check disk space:**
 ```bash
@@ -228,7 +230,7 @@ CSVtoPlot Analyzer - Export Functionality Demo
 All export tests completed successfully!
 ============================================================
 
-Output files saved to: ~/Documents/PythonScripts/CSVtoPlot/CSVtoPlot/demo_output
+Output files saved to: /home/user/CSVtoPlot/demo_output
 
 Generated files:
   - statistics_tables_Neurite_Length.xlsx (7,030 bytes)
