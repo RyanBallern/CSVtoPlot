@@ -87,6 +87,14 @@ class NeuromorphoAnalyzerApp:
         export_menu.add_command(label="Export to Excel...", command=self._export_excel)
         export_menu.add_command(label="Export Statistics Tables...", command=self._export_statistics)
 
+        # View/Preview menu
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Preview Data Plot", command=self._preview_plot)
+        view_menu.add_command(label="Preview Frequency Histogram", command=self._preview_histogram)
+        view_menu.add_separator()
+        view_menu.add_command(label="Open Excel File...", command=self._preview_xlsx)
+
         # Profiles menu
         profiles_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Profiles", menu=profiles_menu)
@@ -234,15 +242,166 @@ class NeuromorphoAnalyzerApp:
         self.results_text.insert('end', message + "\n")
         self.results_text.see('end')
 
+    def _get_quick_paths(self) -> List[tuple]:
+        """Get list of quick access paths (name, path)."""
+        quick_paths = [("Home", str(Path.home()))]
+
+        # Common directories
+        docs = Path.home() / "Documents"
+        if docs.exists():
+            quick_paths.append(("Documents", str(docs)))
+
+        desktop = Path.home() / "Desktop"
+        if desktop.exists():
+            quick_paths.append(("Desktop", str(desktop)))
+
+        # Linux mount points
+        for mount in ['/run/media', '/media', '/mnt']:
+            mount_path = Path(mount)
+            if mount_path.exists():
+                try:
+                    for subdir in mount_path.iterdir():
+                        if subdir.is_dir():
+                            # Check subdirectories for user mounts
+                            for user_mount in subdir.iterdir():
+                                if user_mount.is_dir():
+                                    quick_paths.append((user_mount.name[:12], str(user_mount)))
+                except PermissionError:
+                    pass
+
+        # Windows drives
+        import platform
+        if platform.system() == 'Windows':
+            import string
+            for letter in string.ascii_uppercase:
+                drive = f"{letter}:\\"
+                if Path(drive).exists():
+                    quick_paths.append((f"{letter}:", drive))
+
+        return quick_paths[:8]  # Max 8 quick paths
+
+    def _create_path_dialog(self, title: str, mode: str = 'file',
+                            default_name: str = '', extension: str = '',
+                            filetypes: list = None) -> Optional[str]:
+        """Create flexible path selection dialog.
+
+        Args:
+            title: Dialog title
+            mode: 'file' for file selection, 'folder' for folder, 'save' for save file
+            default_name: Default filename for save mode
+            extension: Default extension for save mode
+            filetypes: List of (description, pattern) tuples for file browser
+
+        Returns:
+            Selected path or None if cancelled
+        """
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.geometry("650x280")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        result = {'path': None}
+
+        # Path entry
+        ttk.Label(dialog, text="Enter path or use buttons below:").pack(pady=(10, 5), padx=10, anchor='w')
+
+        path_frame = ttk.Frame(dialog)
+        path_frame.pack(fill='x', padx=10, pady=5)
+
+        path_var = tk.StringVar()
+        path_entry = ttk.Entry(path_frame, textvariable=path_var, width=55)
+        path_entry.pack(side='left', fill='x', expand=True)
+
+        def browse():
+            if mode == 'folder':
+                selected = filedialog.askdirectory()
+            elif mode == 'save':
+                selected = filedialog.asksaveasfilename(
+                    defaultextension=extension,
+                    filetypes=filetypes or [("All Files", "*.*")]
+                )
+            else:
+                selected = filedialog.askopenfilename(
+                    filetypes=filetypes or [("All Files", "*.*")]
+                )
+            if selected:
+                path_var.set(selected)
+
+        ttk.Button(path_frame, text="Browse...", command=browse).pack(side='left', padx=(5, 0))
+
+        # Quick access buttons
+        quick_frame = ttk.LabelFrame(dialog, text="Quick Access", padding=5)
+        quick_frame.pack(fill='x', padx=10, pady=5)
+
+        quick_paths = self._get_quick_paths()
+        for i, (name, path) in enumerate(quick_paths):
+            row = i // 4
+            col = i % 4
+            ttk.Button(quick_frame, text=name, width=12,
+                       command=lambda p=path: path_var.set(p)).grid(row=row, column=col, padx=2, pady=2)
+
+        # New folder/file creation
+        create_frame = ttk.LabelFrame(dialog, text="Create New", padding=5)
+        create_frame.pack(fill='x', padx=10, pady=5)
+
+        ttk.Label(create_frame, text="Name:").grid(row=0, column=0, padx=5)
+        new_name_var = tk.StringVar(value=default_name)
+        ttk.Entry(create_frame, textvariable=new_name_var, width=25).grid(row=0, column=1, padx=5)
+
+        def create_folder():
+            base = path_var.get().strip()
+            name = new_name_var.get().strip()
+            if base and name:
+                new_path = Path(base) / name
+                new_path.mkdir(parents=True, exist_ok=True)
+                path_var.set(str(new_path))
+
+        def create_file():
+            base = path_var.get().strip()
+            name = new_name_var.get().strip()
+            if base and name:
+                if extension and not name.endswith(extension):
+                    name += extension
+                new_path = Path(base) / name
+                path_var.set(str(new_path))
+
+        ttk.Button(create_frame, text="Create Folder", command=create_folder).grid(row=0, column=2, padx=5)
+        if mode == 'save':
+            ttk.Button(create_frame, text="Set Filename", command=create_file).grid(row=0, column=3, padx=5)
+
+        # OK/Cancel buttons
+        def on_ok():
+            path = path_var.get().strip()
+            if path:
+                result['path'] = path
+            dialog.destroy()
+
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=15)
+        ttk.Button(button_frame, text="OK", command=on_ok, width=10).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Cancel", command=dialog.destroy, width=10).pack(side='left', padx=5)
+
+        path_entry.focus_set()
+        dialog.wait_window()
+
+        return result['path']
+
     # --- File operations ---
 
     def _new_database(self):
         """Create a new database."""
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".db",
+        filepath = self._create_path_dialog(
+            "Create New Database",
+            mode='save',
+            default_name='analysis.db',
+            extension='.db',
             filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
         )
         if filepath:
+            # Ensure .db extension
+            if not filepath.endswith('.db'):
+                filepath += '.db'
             self.database = SQLiteDatabase(filepath)
             self.database.connect()
             self.current_assay_id = None
@@ -251,10 +410,12 @@ class NeuromorphoAnalyzerApp:
 
     def _open_database(self):
         """Open an existing database."""
-        filepath = filedialog.askopenfilename(
+        filepath = self._create_path_dialog(
+            "Open Database",
+            mode='file',
             filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
         )
-        if filepath:
+        if filepath and Path(filepath).exists():
             self.database = SQLiteDatabase(filepath)
             self.database.connect()
 
@@ -272,17 +433,74 @@ class NeuromorphoAnalyzerApp:
             messagebox.showwarning("No Database", "Please create or open a database first.")
             return
 
-        filepaths = filedialog.askopenfilenames(
-            filetypes=[
-                ("All Supported", "*.csv *.xlsx *.xls *.json"),
-                ("CSV Files", "*.csv"),
-                ("Excel Files", "*.xlsx *.xls"),
-                ("JSON Files", "*.json"),
-            ]
-        )
+        # Create dialog for file selection with manual path entry
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Import Files")
+        dialog.geometry("650x350")
+        dialog.transient(self.root)
+        dialog.grab_set()
 
-        if filepaths:
-            self._import_files_list(list(filepaths))
+        ttk.Label(dialog, text="Enter file paths (one per line) or use Browse:").pack(pady=(10, 5), padx=10, anchor='w')
+
+        # Text area for multiple paths
+        text_frame = ttk.Frame(dialog)
+        text_frame.pack(fill='both', expand=True, padx=10, pady=5)
+
+        paths_text = tk.Text(text_frame, height=8, width=60)
+        scrollbar = ttk.Scrollbar(text_frame, command=paths_text.yview)
+        paths_text.configure(yscrollcommand=scrollbar.set)
+        paths_text.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Quick access
+        quick_frame = ttk.LabelFrame(dialog, text="Quick Access", padding=5)
+        quick_frame.pack(fill='x', padx=10, pady=5)
+
+        quick_paths = self._get_quick_paths()
+        for i, (name, path) in enumerate(quick_paths[:6]):
+            ttk.Button(quick_frame, text=name, width=10,
+                       command=lambda p=path: paths_text.insert('end', p + '\n')).grid(row=0, column=i, padx=2)
+
+        # Browse button
+        button_row = ttk.Frame(dialog)
+        button_row.pack(fill='x', padx=10, pady=5)
+
+        def browse_files():
+            files = filedialog.askopenfilenames(
+                filetypes=[
+                    ("All Supported", "*.csv *.xlsx *.xls *.json"),
+                    ("CSV Files", "*.csv"),
+                    ("Excel Files", "*.xlsx *.xls"),
+                    ("JSON Files", "*.json"),
+                ]
+            )
+            if files:
+                for f in files:
+                    paths_text.insert('end', f + '\n')
+
+        ttk.Button(button_row, text="Browse Files...", command=browse_files).pack(side='left', padx=5)
+        ttk.Button(button_row, text="Clear", command=lambda: paths_text.delete('1.0', 'end')).pack(side='left', padx=5)
+
+        def do_import():
+            text = paths_text.get('1.0', 'end').strip()
+            if not text:
+                messagebox.showwarning("No Files", "Please enter or select files to import.")
+                return
+
+            paths = [p.strip() for p in text.split('\n') if p.strip()]
+            valid_paths = [p for p in paths if Path(p).exists() and Path(p).is_file()]
+
+            if not valid_paths:
+                messagebox.showwarning("No Valid Files", "No valid file paths found.")
+                return
+
+            dialog.destroy()
+            self._import_files_list(valid_paths)
+
+        action_frame = ttk.Frame(dialog)
+        action_frame.pack(pady=10)
+        ttk.Button(action_frame, text="Import", command=do_import).pack(side='left', padx=5)
+        ttk.Button(action_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
 
     def _import_directory(self):
         """Import all data files from a directory."""
@@ -983,6 +1201,282 @@ class NeuromorphoAnalyzerApp:
             messagebox.showwarning("No Data", "Please load data first.")
             return False
         return True
+
+    # --- Preview operations ---
+
+    def _preview_plot(self):
+        """Preview data as bar plot with error bars."""
+        if not self._check_data_loaded():
+            return
+
+        try:
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+            df = self.database.get_measurements(self.current_assay_id)
+            selected_params = self.param_selector.get_selected_parameters()
+            selected_conditions = self.condition_selector.get_selected_conditions()
+
+            if not selected_params:
+                messagebox.showwarning("No Parameters", "Please select at least one parameter.")
+                return
+
+            # Convert to long format
+            df_long = self._wide_to_long(df, selected_params)
+            df_long = df_long[df_long['condition'].isin(selected_conditions)]
+
+            # Create preview window
+            preview = tk.Toplevel(self.root)
+            preview.title("Data Preview - Bar Plot")
+            preview.geometry("900x700")
+
+            # Create notebook for multiple parameters
+            notebook = ttk.Notebook(preview)
+            notebook.pack(fill='both', expand=True, padx=5, pady=5)
+
+            for param in selected_params[:5]:  # Limit to 5 params
+                param_df = df_long[df_long['parameter_name'] == param]
+                if param_df.empty:
+                    continue
+
+                # Create figure
+                fig, ax = plt.subplots(figsize=(8, 5))
+
+                # Calculate means and SEMs
+                stats_data = param_df.groupby('condition')['value'].agg(['mean', 'sem', 'count']).reindex(selected_conditions)
+
+                x = range(len(selected_conditions))
+                bars = ax.bar(x, stats_data['mean'], yerr=stats_data['sem'],
+                             capsize=5, color='steelblue', edgecolor='black')
+
+                ax.set_xticks(x)
+                ax.set_xticklabels(selected_conditions, rotation=45, ha='right')
+                ax.set_ylabel(param)
+                ax.set_title(f'{param} by Condition')
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+
+                fig.tight_layout()
+
+                # Add to notebook
+                frame = ttk.Frame(notebook)
+                notebook.add(frame, text=param[:15])
+
+                canvas = FigureCanvasTkAgg(fig, master=frame)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill='both', expand=True)
+
+            # Save button
+            def save_plots():
+                save_dir = filedialog.askdirectory(title="Select folder to save plots")
+                if save_dir:
+                    for param in selected_params:
+                        param_df = df_long[df_long['parameter_name'] == param]
+                        if param_df.empty:
+                            continue
+
+                        fig, ax = plt.subplots(figsize=(8, 5))
+                        stats_data = param_df.groupby('condition')['value'].agg(['mean', 'sem']).reindex(selected_conditions)
+                        x = range(len(selected_conditions))
+                        ax.bar(x, stats_data['mean'], yerr=stats_data['sem'],
+                               capsize=5, color='steelblue', edgecolor='black')
+                        ax.set_xticks(x)
+                        ax.set_xticklabels(selected_conditions, rotation=45, ha='right')
+                        ax.set_ylabel(param)
+                        ax.set_title(f'{param} by Condition')
+                        ax.spines['top'].set_visible(False)
+                        ax.spines['right'].set_visible(False)
+                        fig.tight_layout()
+
+                        clean_param = param.replace('/', '_').replace('\\', '_')
+                        fig.savefig(Path(save_dir) / f'{clean_param}_barplot.png', dpi=150)
+                        plt.close(fig)
+
+                    messagebox.showinfo("Saved", f"Plots saved to {save_dir}")
+
+            ttk.Button(preview, text="Save All Plots", command=save_plots).pack(pady=10)
+
+        except ImportError as e:
+            messagebox.showerror("Error", f"Matplotlib required for plots: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Plot error: {e}")
+
+    def _preview_histogram(self):
+        """Preview frequency histogram."""
+        if not self._check_data_loaded():
+            return
+
+        try:
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+            df = self.database.get_measurements(self.current_assay_id)
+            selected_params = self.param_selector.get_selected_parameters()
+            selected_conditions = self.condition_selector.get_selected_conditions()
+
+            if not selected_params:
+                messagebox.showwarning("No Parameters", "Please select at least one parameter.")
+                return
+
+            # Convert to long format
+            df_long = self._wide_to_long(df, selected_params)
+            df_long = df_long[df_long['condition'].isin(selected_conditions)]
+
+            # Create preview window
+            preview = tk.Toplevel(self.root)
+            preview.title("Data Preview - Histogram")
+            preview.geometry("900x700")
+
+            notebook = ttk.Notebook(preview)
+            notebook.pack(fill='both', expand=True, padx=5, pady=5)
+
+            for param in selected_params[:5]:
+                param_df = df_long[df_long['parameter_name'] == param]
+                if param_df.empty:
+                    continue
+
+                fig, ax = plt.subplots(figsize=(8, 5))
+
+                # Plot histogram for each condition
+                for cond in selected_conditions:
+                    cond_values = param_df[param_df['condition'] == cond]['value'].dropna()
+                    if len(cond_values) > 0:
+                        ax.hist(cond_values, bins=30, alpha=0.6, label=cond, edgecolor='black')
+
+                ax.set_xlabel(param)
+                ax.set_ylabel('Frequency')
+                ax.set_title(f'{param} Distribution')
+                ax.legend()
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+
+                fig.tight_layout()
+
+                frame = ttk.Frame(notebook)
+                notebook.add(frame, text=param[:15])
+
+                canvas = FigureCanvasTkAgg(fig, master=frame)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill='both', expand=True)
+
+            # Save button
+            def save_histograms():
+                save_dir = filedialog.askdirectory(title="Select folder to save histograms")
+                if save_dir:
+                    for param in selected_params:
+                        param_df = df_long[df_long['parameter_name'] == param]
+                        if param_df.empty:
+                            continue
+
+                        fig, ax = plt.subplots(figsize=(8, 5))
+                        for cond in selected_conditions:
+                            cond_values = param_df[param_df['condition'] == cond]['value'].dropna()
+                            if len(cond_values) > 0:
+                                ax.hist(cond_values, bins=30, alpha=0.6, label=cond, edgecolor='black')
+                        ax.set_xlabel(param)
+                        ax.set_ylabel('Frequency')
+                        ax.set_title(f'{param} Distribution')
+                        ax.legend()
+                        ax.spines['top'].set_visible(False)
+                        ax.spines['right'].set_visible(False)
+                        fig.tight_layout()
+
+                        clean_param = param.replace('/', '_').replace('\\', '_')
+                        fig.savefig(Path(save_dir) / f'{clean_param}_histogram.png', dpi=150)
+                        plt.close(fig)
+
+                    messagebox.showinfo("Saved", f"Histograms saved to {save_dir}")
+
+            ttk.Button(preview, text="Save All Histograms", command=save_histograms).pack(pady=10)
+
+        except ImportError as e:
+            messagebox.showerror("Error", f"Matplotlib required for plots: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Plot error: {e}")
+
+    def _preview_xlsx(self):
+        """Preview an Excel file."""
+        filepath = self._create_path_dialog(
+            "Open Excel File",
+            mode='file',
+            filetypes=[("Excel Files", "*.xlsx *.xls"), ("All Files", "*.*")]
+        )
+
+        if not filepath or not Path(filepath).exists():
+            return
+
+        try:
+            from openpyxl import load_workbook
+
+            wb = load_workbook(filepath, read_only=True, data_only=True)
+
+            # Create preview window
+            preview = tk.Toplevel(self.root)
+            preview.title(f"Excel Preview - {Path(filepath).name}")
+            preview.geometry("1000x600")
+
+            # Notebook for sheets
+            notebook = ttk.Notebook(preview)
+            notebook.pack(fill='both', expand=True, padx=5, pady=5)
+
+            for sheet_name in wb.sheetnames[:10]:  # Limit to 10 sheets
+                sheet = wb[sheet_name]
+
+                frame = ttk.Frame(notebook)
+                notebook.add(frame, text=sheet_name[:15])
+
+                # Create treeview for data
+                tree_frame = ttk.Frame(frame)
+                tree_frame.pack(fill='both', expand=True)
+
+                # Get data from sheet
+                data = []
+                max_cols = 0
+                for row in sheet.iter_rows(max_row=100):  # Limit rows
+                    row_data = [cell.value for cell in row]
+                    max_cols = max(max_cols, len(row_data))
+                    data.append(row_data)
+
+                if not data:
+                    ttk.Label(frame, text="(Empty sheet)").pack()
+                    continue
+
+                # Create treeview
+                columns = [f'Col{i+1}' for i in range(max_cols)]
+                tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
+
+                # Scrollbars
+                vsb = ttk.Scrollbar(tree_frame, orient='vertical', command=tree.yview)
+                hsb = ttk.Scrollbar(tree_frame, orient='horizontal', command=tree.xview)
+                tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+                tree.grid(row=0, column=0, sticky='nsew')
+                vsb.grid(row=0, column=1, sticky='ns')
+                hsb.grid(row=1, column=0, sticky='ew')
+                tree_frame.grid_rowconfigure(0, weight=1)
+                tree_frame.grid_columnconfigure(0, weight=1)
+
+                # Set column headers (first row if it looks like headers)
+                for i, col in enumerate(columns):
+                    header = data[0][i] if data and i < len(data[0]) and data[0][i] else f'Col {i+1}'
+                    tree.heading(col, text=str(header)[:20])
+                    tree.column(col, width=100)
+
+                # Add data rows (skip first if used as header)
+                start_row = 1 if data and any(isinstance(v, str) for v in data[0] if v) else 0
+                for row in data[start_row:]:
+                    # Pad row to max_cols
+                    padded = row + [None] * (max_cols - len(row))
+                    display = [str(v)[:50] if v is not None else '' for v in padded]
+                    tree.insert('', 'end', values=display)
+
+            wb.close()
+
+            # Info label
+            ttk.Label(preview, text=f"Sheets: {len(wb.sheetnames)} | Showing first 100 rows per sheet").pack(pady=5)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open Excel file: {e}")
 
     def _show_about(self):
         """Show about dialog."""
