@@ -5,6 +5,7 @@ from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from typing import Optional, List, Dict
 import threading
+import pandas as pd
 
 from .core.database import SQLiteDatabase
 from .core.importers import UnifiedImporter, FileScanner, HeaderScanner, ParameterMapper
@@ -353,12 +354,17 @@ class NeuromorphoAnalyzerApp:
             if all_files:
                 # Create file info dicts with condition from filename
                 files = []
-                for filepath in all_files:
-                    # Try to extract condition from filename
+                for filepath in sorted(all_files):
+                    # Try to extract condition from 3rd substring (index 2)
                     stem = filepath.stem
                     parts = stem.replace('-', '_').split('_')
-                    # Use last meaningful part or whole stem as condition
-                    condition = parts[1] if len(parts) >= 2 else stem
+                    # Use 3rd part if available, else 2nd, else whole stem
+                    if len(parts) >= 3:
+                        condition = parts[2]
+                    elif len(parts) >= 2:
+                        condition = parts[1]
+                    else:
+                        condition = stem
                     files.append({
                         'path': filepath,
                         'condition': condition,
@@ -366,10 +372,112 @@ class NeuromorphoAnalyzerApp:
                     })
 
         if files:
-            filepaths = [str(f['path']) for f in files]
-            self._import_files_list(filepaths, files)
+            # Show condition assignment dialog
+            self._show_condition_assignment_dialog(files)
         else:
             messagebox.showinfo("No Files", "No supported files found in directory.\n\nSupported formats: .csv, .xlsx, .xls, .json")
+
+    def _show_condition_assignment_dialog(self, files: List[Dict]):
+        """Show dialog to assign conditions to files."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Assign Conditions")
+        dialog.geometry("700x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Review and edit conditions for each file:",
+                  font=('TkDefaultFont', 10, 'bold')).pack(pady=10, padx=10, anchor='w')
+
+        # Frame with scrollbar for file list
+        list_frame = ttk.Frame(dialog)
+        list_frame.pack(fill='both', expand=True, padx=10, pady=5)
+
+        canvas = tk.Canvas(list_frame)
+        scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            '<Configure>',
+            lambda e: canvas.configure(scrollregion=canvas.bbox('all'))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Headers
+        ttk.Label(scrollable_frame, text="Filename", font=('TkDefaultFont', 9, 'bold'), width=40).grid(row=0, column=0, padx=5, pady=2, sticky='w')
+        ttk.Label(scrollable_frame, text="Condition", font=('TkDefaultFont', 9, 'bold'), width=20).grid(row=0, column=1, padx=5, pady=2, sticky='w')
+        ttk.Label(scrollable_frame, text="Dataset (L/T)", font=('TkDefaultFont', 9, 'bold'), width=10).grid(row=0, column=2, padx=5, pady=2, sticky='w')
+
+        # Store entry widgets
+        condition_vars = []
+        dataset_vars = []
+
+        for i, file_info in enumerate(files):
+            filename = file_info['path'].name
+
+            # Filename label
+            ttk.Label(scrollable_frame, text=filename, width=40).grid(row=i+1, column=0, padx=5, pady=2, sticky='w')
+
+            # Condition entry
+            cond_var = tk.StringVar(value=file_info.get('condition', 'Unknown'))
+            cond_entry = ttk.Entry(scrollable_frame, textvariable=cond_var, width=20)
+            cond_entry.grid(row=i+1, column=1, padx=5, pady=2)
+            condition_vars.append(cond_var)
+
+            # Dataset marker dropdown (L/T/None)
+            ds_var = tk.StringVar(value=file_info.get('dataset_marker', ''))
+            ds_combo = ttk.Combobox(scrollable_frame, textvariable=ds_var, values=['', 'L', 'T'], width=8, state='readonly')
+            ds_combo.grid(row=i+1, column=2, padx=5, pady=2)
+            dataset_vars.append(ds_var)
+
+        # Bulk assignment frame
+        bulk_frame = ttk.LabelFrame(dialog, text="Bulk Assign", padding=10)
+        bulk_frame.pack(fill='x', padx=10, pady=10)
+
+        ttk.Label(bulk_frame, text="Set all conditions to:").grid(row=0, column=0, padx=5)
+        bulk_cond_var = tk.StringVar()
+        bulk_cond_entry = ttk.Entry(bulk_frame, textvariable=bulk_cond_var, width=15)
+        bulk_cond_entry.grid(row=0, column=1, padx=5)
+
+        def apply_bulk_condition():
+            val = bulk_cond_var.get().strip()
+            if val:
+                for var in condition_vars:
+                    var.set(val)
+
+        ttk.Button(bulk_frame, text="Apply", command=apply_bulk_condition).grid(row=0, column=2, padx=5)
+
+        ttk.Label(bulk_frame, text="Set all datasets to:").grid(row=0, column=3, padx=(20, 5))
+        bulk_ds_var = tk.StringVar()
+        bulk_ds_combo = ttk.Combobox(bulk_frame, textvariable=bulk_ds_var, values=['', 'L', 'T'], width=5, state='readonly')
+        bulk_ds_combo.grid(row=0, column=4, padx=5)
+
+        def apply_bulk_dataset():
+            val = bulk_ds_var.get()
+            for var in dataset_vars:
+                var.set(val)
+
+        ttk.Button(bulk_frame, text="Apply", command=apply_bulk_dataset).grid(row=0, column=5, padx=5)
+
+        # Import button
+        def do_import():
+            # Update file info with user-assigned conditions
+            for i, file_info in enumerate(files):
+                file_info['condition'] = condition_vars[i].get().strip() or 'Unknown'
+                file_info['dataset_marker'] = dataset_vars[i].get() or None
+
+            dialog.destroy()
+            filepaths = [str(f['path']) for f in files]
+            self._import_files_list(filepaths, files)
+
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=10)
+        ttk.Button(button_frame, text="Import", command=do_import).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
 
     def _import_files_list(self, filepaths: List[str], file_infos: List[Dict] = None):
         """Import a list of files."""
@@ -427,8 +535,11 @@ class NeuromorphoAnalyzerApp:
             selected_params = self.param_selector.get_selected_parameters()
             selected_conditions = self.condition_selector.get_selected_conditions()
 
-            # Filter data
+            # Filter by conditions
             df = df[df['condition'].isin(selected_conditions)]
+
+            # Convert wide to long format
+            df = self._wide_to_long(df, selected_params)
 
             self._log_result("=" * 50)
             self._log_result("STATISTICAL ANALYSIS")
@@ -669,6 +780,41 @@ class NeuromorphoAnalyzerApp:
         pass
 
     # --- Helpers ---
+
+    def _wide_to_long(self, df: pd.DataFrame, parameters: List[str] = None) -> pd.DataFrame:
+        """Convert wide format DataFrame to long format.
+
+        Wide format: each parameter is a column
+        Long format: parameter_name, value columns
+
+        Args:
+            df: Wide format DataFrame with source_file, condition columns
+            parameters: List of parameter columns to melt (None = auto-detect)
+
+        Returns:
+            Long format DataFrame with parameter_name, value, source_file, condition
+        """
+        if df.empty:
+            return pd.DataFrame(columns=['parameter_name', 'value', 'source_file', 'condition'])
+
+        # Identify parameter columns (exclude metadata)
+        metadata_cols = {'source_file', 'condition', 'assay_id', 'id', 'created_at'}
+        if parameters is None:
+            parameters = [col for col in df.columns if col not in metadata_cols]
+
+        if not parameters:
+            return pd.DataFrame(columns=['parameter_name', 'value', 'source_file', 'condition'])
+
+        # Melt wide to long
+        id_vars = [col for col in ['source_file', 'condition'] if col in df.columns]
+        long_df = df.melt(
+            id_vars=id_vars,
+            value_vars=parameters,
+            var_name='parameter_name',
+            value_name='value'
+        )
+
+        return long_df
 
     def _check_data_loaded(self) -> bool:
         """Check if data is loaded and show warning if not."""

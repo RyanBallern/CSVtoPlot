@@ -39,6 +39,42 @@ class ExcelExporter:
         self.param_selector = parameter_selector
         self.stats = stats_engine
 
+    def _wide_to_long(self, df: pd.DataFrame, parameters: List[str] = None) -> pd.DataFrame:
+        """Convert wide format DataFrame to long format.
+
+        Args:
+            df: Wide format DataFrame
+            parameters: List of parameter columns to melt
+
+        Returns:
+            Long format DataFrame with parameter_name, value columns
+        """
+        if df.empty:
+            return pd.DataFrame(columns=['parameter_name', 'value', 'source_file', 'condition'])
+
+        # Identify parameter columns (exclude metadata)
+        metadata_cols = {'source_file', 'condition', 'assay_id', 'id', 'created_at'}
+        if parameters is None:
+            parameters = [col for col in df.columns if col not in metadata_cols]
+
+        if not parameters:
+            return df
+
+        # Check if already in long format
+        if 'parameter_name' in df.columns and 'value' in df.columns:
+            return df
+
+        # Melt wide to long
+        id_vars = [col for col in ['source_file', 'condition'] if col in df.columns]
+        long_df = df.melt(
+            id_vars=id_vars,
+            value_vars=parameters,
+            var_name='parameter_name',
+            value_name='value'
+        )
+
+        return long_df
+
     def export(self, assay_ids: List[int], output_dir: Path,
                database: DatabaseBase,
                dataset_split: Optional[Dict[str, str]] = None,
@@ -71,6 +107,10 @@ class ExcelExporter:
             df = pd.concat(dfs, ignore_index=True)
         else:
             df = pd.DataFrame()
+
+        # Convert wide format to long format if needed
+        if not df.empty and 'value' not in df.columns:
+            df = self._wide_to_long(df, parameters)
 
         # Default dataset split if not provided
         if dataset_split is None:
