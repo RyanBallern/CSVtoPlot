@@ -125,32 +125,51 @@ class ExcelExporter:
         assay_indices = '_'.join(str(aid) for aid in sorted(assay_ids))
         filename = f'analysis_{timestamp}_assays{assay_indices}.xlsx'
 
-        # Get conditions
+        # Get conditions and parameters
         conditions = sorted(df['condition'].unique()) if not df.empty else []
+        unique_params = df['parameter_name'].unique().tolist() if not df.empty and 'parameter_name' in df.columns else parameters
 
-        # Create sheets for each dataset type
-        for marker, dataset_name in dataset_split.items():
-            # Filter data by marker if available (check source_file for marker)
-            dataset_df = self._filter_by_marker(df, marker)
-            if dataset_df.empty:
-                # If no marker-based data, use all data for first dataset
-                if marker == list(dataset_split.keys())[0]:
-                    dataset_df = df
-                else:
-                    continue
+        # Check if we have L/T markers in source files
+        has_markers = False
+        if not df.empty and 'source_file' in df.columns:
+            for marker in dataset_split.keys():
+                if df['source_file'].str.contains(f'{marker}\\.', regex=True, na=False).any():
+                    has_markers = True
+                    break
 
-            # Create data sheet (raw values with stats header)
-            self._create_data_sheet(wb, dataset_df, dataset_name, conditions)
+        # Create sheets for each parameter
+        for param in unique_params:
+            # Filter data for this parameter
+            param_df = df[df['parameter_name'] == param] if 'parameter_name' in df.columns else df
 
-            # Create relative change sheet
-            self._create_relative_change_sheet(wb, dataset_df, dataset_name, conditions)
+            if param_df.empty:
+                continue
 
-            # Create frequency sheet
-            self._create_frequency_sheet(wb, dataset_df, dataset_name, conditions,
-                                         bin_size=bin_size, bin_count=bin_count)
+            # Clean parameter name for sheet name (Excel has 31 char limit)
+            clean_param = str(param)[:20].replace('/', '_').replace('\\', '_')
 
-            # Create statistics sheet
-            self._create_statistics_sheet(wb, dataset_df, dataset_name, conditions)
+            if has_markers:
+                # Split by L/T markers
+                for marker, dataset_name in dataset_split.items():
+                    marker_df = self._filter_by_marker(param_df, marker)
+                    if marker_df.empty:
+                        continue
+
+                    sheet_base = f"{clean_param}_{marker}"
+
+                    # Create sheets for this parameter and marker
+                    self._create_data_sheet(wb, marker_df, sheet_base, conditions)
+                    self._create_relative_change_sheet(wb, marker_df, sheet_base, conditions)
+                    self._create_frequency_sheet(wb, marker_df, sheet_base, conditions,
+                                                 bin_size=bin_size, bin_count=bin_count)
+                    self._create_statistics_sheet(wb, marker_df, sheet_base, conditions)
+            else:
+                # No L/T markers - create sheets per parameter only
+                self._create_data_sheet(wb, param_df, clean_param, conditions)
+                self._create_relative_change_sheet(wb, param_df, clean_param, conditions)
+                self._create_frequency_sheet(wb, param_df, clean_param, conditions,
+                                             bin_size=bin_size, bin_count=bin_count)
+                self._create_statistics_sheet(wb, param_df, clean_param, conditions)
 
         # Save
         output_path = output_dir / filename
@@ -250,21 +269,81 @@ class ExcelExporter:
 
     def _create_relative_change_sheet(self, wb: Workbook, df: pd.DataFrame,
                                        base_name: str, conditions: List[str]) -> None:
-        """Create relative change worksheet."""
-        sheet_name = f'{base_name}_RelativeChange'
+        """Create relative change worksheet.
+
+        Calculates relative change as percentage of control (first condition).
+        """
+        sheet_name = f'{base_name}_RelChange'[:31]  # Excel 31 char limit
         ws = wb.create_sheet(sheet_name)
 
-        # Same structure as data sheet but for relative change values
+        if df.empty or not conditions:
+            self._write_empty_data_sheet(ws, conditions)
+            return
+
+        # Get control condition (first one alphabetically, or one containing 'control')
+        control_cond = conditions[0]
+        for cond in conditions:
+            if 'control' in cond.lower() or 'ctrl' in cond.lower():
+                control_cond = cond
+                break
+
+        # Get control values and mean
+        control_values = df[df['condition'] == control_cond]['value'].dropna()
+        control_mean = control_values.mean() if len(control_values) > 0 else 1.0
+
+        if control_mean == 0:
+            control_mean = 1.0  # Avoid division by zero
+
+        # Calculate relative change for each condition
+        condition_rel_values = {}
+        for cond in conditions:
+            cond_values = df[df['condition'] == cond]['value'].dropna().tolist()
+            # Relative change as percentage of control mean
+            rel_values = [(v / control_mean) * 100 for v in cond_values]
+            condition_rel_values[cond] = rel_values
+
+        # Row 1: Condition headers
         ws.cell(row=1, column=1, value='Condition:').font = DEFAULT_FONT
         for col_idx, cond in enumerate(conditions, 2):
             ws.cell(row=1, column=col_idx, value=cond).font = DEFAULT_FONT
 
-        ws.cell(row=2, column=1, value='Average:').font = DEFAULT_FONT
-        ws.cell(row=3, column=1, value='SEM:').font = DEFAULT_FONT
-        ws.cell(row=4, column=1, value='Count:').font = DEFAULT_FONT
-        ws.cell(row=5, column=1, value='Values:')
+        # Row 2: Average (relative)
+        ws.cell(row=2, column=1, value='Average (%):').font = DEFAULT_FONT
+        for col_idx, cond in enumerate(conditions, 2):
+            values = condition_rel_values.get(cond, [])
+            if values:
+                avg = np.mean(values)
+                ws.cell(row=2, column=col_idx, value=round(avg, 2))
 
-        # Relative change would be calculated against control - placeholder for now
+        # Row 3: SEM
+        ws.cell(row=3, column=1, value='SEM:').font = DEFAULT_FONT
+        for col_idx, cond in enumerate(conditions, 2):
+            values = condition_rel_values.get(cond, [])
+            if len(values) > 1:
+                sem = np.std(values, ddof=1) / np.sqrt(len(values))
+                ws.cell(row=3, column=col_idx, value=round(sem, 2))
+
+        # Row 4: Count
+        ws.cell(row=4, column=1, value='Count:').font = DEFAULT_FONT
+        for col_idx, cond in enumerate(conditions, 2):
+            values = condition_rel_values.get(cond, [])
+            ws.cell(row=4, column=col_idx, value=len(values))
+
+        # Row 5: Control reference
+        ws.cell(row=5, column=1, value=f'Control ({control_cond}):').font = DEFAULT_FONT
+        ws.cell(row=5, column=2, value=round(control_mean, 4))
+
+        # Row 6+: Values
+        max_values = max(len(v) for v in condition_rel_values.values()) if condition_rel_values else 0
+        for row_idx in range(7, 7 + max_values):
+            value_idx = row_idx - 7
+            if value_idx == 0:
+                ws.cell(row=row_idx, column=1, value='Values (%):')
+
+            for col_idx, cond in enumerate(conditions, 2):
+                values = condition_rel_values.get(cond, [])
+                if value_idx < len(values):
+                    ws.cell(row=row_idx, column=col_idx, value=round(values[value_idx], 2))
 
     def _create_frequency_sheet(self, wb: Workbook, df: pd.DataFrame,
                                  base_name: str, conditions: List[str],

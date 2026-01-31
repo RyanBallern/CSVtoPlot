@@ -293,7 +293,7 @@ class NeuromorphoAnalyzerApp:
         # Create dialog with entry field for paste and browse button
         dialog = tk.Toplevel(self.root)
         dialog.title("Import Directory")
-        dialog.geometry("500x150")
+        dialog.geometry("600x200")
         dialog.transient(self.root)
         dialog.grab_set()
 
@@ -312,6 +312,43 @@ class NeuromorphoAnalyzerApp:
                 path_var.set(dirpath)
 
         ttk.Button(path_frame, text="Browse...", command=browse).pack(side='left', padx=(5, 0))
+
+        # Quick drive/location selection
+        drives_frame = ttk.LabelFrame(dialog, text="Quick Access", padding=5)
+        drives_frame.pack(fill='x', padx=10, pady=5)
+
+        def set_path(path):
+            path_var.set(path)
+
+        # Detect available drives/mount points
+        quick_paths = []
+        # Linux mount points
+        for mount in ['/run/media', '/media', '/mnt']:
+            mount_path = Path(mount)
+            if mount_path.exists():
+                for subdir in mount_path.iterdir():
+                    if subdir.is_dir():
+                        quick_paths.append((subdir.name[:10], str(subdir)))
+        # Home directory
+        quick_paths.insert(0, ("Home", str(Path.home())))
+        # Common locations
+        docs = Path.home() / "Documents"
+        if docs.exists():
+            quick_paths.insert(1, ("Documents", str(docs)))
+
+        # Windows drives (if on Windows)
+        import platform
+        if platform.system() == 'Windows':
+            import string
+            for letter in string.ascii_uppercase:
+                drive = f"{letter}:\\"
+                if Path(drive).exists():
+                    quick_paths.append((f"{letter}:", drive))
+
+        # Create buttons for quick paths (max 6)
+        for i, (name, path) in enumerate(quick_paths[:6]):
+            ttk.Button(drives_frame, text=name, width=10,
+                       command=lambda p=path: set_path(p)).grid(row=0, column=i, padx=2)
 
         def do_import():
             dirpath = path_var.get().strip()
@@ -633,34 +670,158 @@ class NeuromorphoAnalyzerApp:
     # --- Export operations ---
 
     def _export_excel(self):
-        """Export data to Excel."""
+        """Export data to Excel with full analysis."""
         if not self._check_data_loaded():
             return
 
-        output_dir = filedialog.askdirectory(title="Select Output Directory")
-        if not output_dir:
-            return
+        # Create export dialog with path entry and folder creation
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Export to Excel")
+        dialog.geometry("600x250")
+        dialog.transient(self.root)
+        dialog.grab_set()
 
-        self._set_status("Exporting to Excel...")
+        ttk.Label(dialog, text="Select or create output folder:").pack(pady=(10, 5), padx=10, anchor='w')
+
+        path_frame = ttk.Frame(dialog)
+        path_frame.pack(fill='x', padx=10, pady=5)
+
+        path_var = tk.StringVar(value=str(Path.home() / "Documents"))
+        path_entry = ttk.Entry(path_frame, textvariable=path_var, width=50)
+        path_entry.pack(side='left', fill='x', expand=True)
+
+        def browse():
+            dirpath = filedialog.askdirectory()
+            if dirpath:
+                path_var.set(dirpath)
+
+        ttk.Button(path_frame, text="Browse...", command=browse).pack(side='left', padx=(5, 0))
+
+        # Quick drive/location selection
+        drives_frame = ttk.LabelFrame(dialog, text="Quick Access", padding=5)
+        drives_frame.pack(fill='x', padx=10, pady=5)
+
+        def set_path(path):
+            path_var.set(path)
+
+        # Detect available drives/mount points
+        quick_paths = [("Home", str(Path.home()))]
+        docs = Path.home() / "Documents"
+        if docs.exists():
+            quick_paths.append(("Documents", str(docs)))
+
+        # Linux mount points
+        for mount in ['/run/media', '/media', '/mnt']:
+            mount_path = Path(mount)
+            if mount_path.exists():
+                for subdir in mount_path.iterdir():
+                    if subdir.is_dir():
+                        quick_paths.append((subdir.name[:10], str(subdir)))
+
+        # Windows drives
+        import platform
+        if platform.system() == 'Windows':
+            import string
+            for letter in string.ascii_uppercase:
+                drive = f"{letter}:\\"
+                if Path(drive).exists():
+                    quick_paths.append((f"{letter}:", drive))
+
+        for i, (name, path) in enumerate(quick_paths[:6]):
+            ttk.Button(drives_frame, text=name, width=10,
+                       command=lambda p=path: set_path(p)).grid(row=0, column=i, padx=2)
+
+        # New folder creation
+        newfolder_frame = ttk.Frame(dialog)
+        newfolder_frame.pack(fill='x', padx=10, pady=5)
+
+        ttk.Label(newfolder_frame, text="New folder name:").pack(side='left')
+        newfolder_var = tk.StringVar()
+        ttk.Entry(newfolder_frame, textvariable=newfolder_var, width=20).pack(side='left', padx=5)
+
+        def create_folder():
+            base = path_var.get().strip()
+            name = newfolder_var.get().strip()
+            if base and name:
+                new_path = Path(base) / name
+                new_path.mkdir(parents=True, exist_ok=True)
+                path_var.set(str(new_path))
+                newfolder_var.set("")
+
+        ttk.Button(newfolder_frame, text="Create", command=create_folder).pack(side='left', padx=5)
+
+        def do_export():
+            output_dir = path_var.get().strip()
+            if not output_dir:
+                messagebox.showwarning("No Path", "Please select an output directory.")
+                return
+
+            output_path = Path(output_dir)
+            output_path.mkdir(parents=True, exist_ok=True)
+
+            dialog.destroy()
+            self._perform_export(output_path)
+
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=15)
+        ttk.Button(button_frame, text="Export", command=do_export).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
+
+    def _perform_export(self, output_dir: Path):
+        """Perform the actual export with analysis."""
+        self._set_status("Running analysis and exporting...")
+        self.notebook.select(2)  # Switch to results tab
 
         try:
+            # Run statistics first
+            self._log_result("=" * 50)
+            self._log_result("RUNNING COMPLETE ANALYSIS & EXPORT")
+            self._log_result("=" * 50)
+
             stats = StatisticsEngine()
             param_selector = ExportParameterSelector(self.database)
-            param_selector.select_parameters(self.param_selector.get_selected_parameters())
+            selected_params = self.param_selector.get_selected_parameters()
+            param_selector.select_parameters(selected_params)
 
+            # Log analysis summary
+            df = self.database.get_measurements(self.current_assay_id)
+            df_long = self._wide_to_long(df, selected_params)
+
+            for param in selected_params:
+                param_df = df_long[df_long['parameter_name'] == param]
+                if param_df.empty:
+                    continue
+
+                self._log_result(f"\nParameter: {param}")
+                self._log_result("-" * 30)
+
+                try:
+                    result = stats.auto_compare(param_df, 'value', 'condition')
+                    main_test = result.get('main_test')
+                    if main_test:
+                        self._log_result(f"Test: {main_test.test_name}")
+                        self._log_result(f"P-value: {main_test.p_value:.4e}")
+                        self._log_result(f"Significant: {'Yes' if main_test.significant else 'No'}")
+                except Exception as e:
+                    self._log_result(f"Stats error: {e}")
+
+            # Export to Excel
+            self._log_result("\nExporting to Excel...")
             exporter = ExcelExporter(param_selector, stats)
             output_path = exporter.export(
                 [self.current_assay_id],
-                Path(output_dir),
+                output_dir,
                 self.database
             )
 
             self._set_status(f"Exported to: {output_path}")
-            self._log_result(f"Excel export saved to: {output_path}")
-            messagebox.showinfo("Export Complete", f"Saved to:\n{output_path}")
+            self._log_result(f"\nExport complete: {output_path}")
+            messagebox.showinfo("Export Complete", f"Analysis and export saved to:\n{output_path}")
 
         except Exception as e:
+            import traceback
             self._log_result(f"Export error: {e}")
+            self._log_result(traceback.format_exc())
             self._set_status("Export failed")
             messagebox.showerror("Export Error", str(e))
 
