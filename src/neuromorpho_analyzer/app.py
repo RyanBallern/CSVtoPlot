@@ -289,16 +289,87 @@ class NeuromorphoAnalyzerApp:
             messagebox.showwarning("No Database", "Please create or open a database first.")
             return
 
-        dirpath = filedialog.askdirectory()
-        if dirpath:
-            scanner = FileScanner(Path(dirpath))
-            files = scanner.scan_files()
+        # Create dialog with entry field for paste and browse button
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Import Directory")
+        dialog.geometry("500x150")
+        dialog.transient(self.root)
+        dialog.grab_set()
 
-            if files:
-                filepaths = [str(f['path']) for f in files]
-                self._import_files_list(filepaths, files)
-            else:
-                messagebox.showinfo("No Files", "No supported files found in directory.")
+        ttk.Label(dialog, text="Enter or paste directory path:").pack(pady=(10, 5), padx=10, anchor='w')
+
+        path_frame = ttk.Frame(dialog)
+        path_frame.pack(fill='x', padx=10, pady=5)
+
+        path_var = tk.StringVar()
+        path_entry = ttk.Entry(path_frame, textvariable=path_var, width=50)
+        path_entry.pack(side='left', fill='x', expand=True)
+
+        def browse():
+            dirpath = filedialog.askdirectory()
+            if dirpath:
+                path_var.set(dirpath)
+
+        ttk.Button(path_frame, text="Browse...", command=browse).pack(side='left', padx=(5, 0))
+
+        def do_import():
+            dirpath = path_var.get().strip()
+            if not dirpath:
+                messagebox.showwarning("No Path", "Please enter a directory path.")
+                return
+
+            dirpath = Path(dirpath)
+            if not dirpath.exists():
+                messagebox.showerror("Error", f"Directory does not exist:\n{dirpath}")
+                return
+
+            if not dirpath.is_dir():
+                messagebox.showerror("Error", f"Path is not a directory:\n{dirpath}")
+                return
+
+            dialog.destroy()
+            self._scan_and_import_directory(dirpath)
+
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=20)
+        ttk.Button(button_frame, text="Import", command=do_import).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
+
+        path_entry.focus_set()
+
+    def _scan_and_import_directory(self, dirpath: Path):
+        """Scan directory and import all supported files."""
+        # First try FileScanner for structured naming
+        scanner = FileScanner(dirpath)
+        files = scanner.scan_files()
+
+        # If no structured files found, scan for all supported files
+        if not files:
+            supported_extensions = {'.csv', '.xlsx', '.xls', '.json'}
+            all_files = []
+            for ext in supported_extensions:
+                all_files.extend(dirpath.glob(f'*{ext}'))
+
+            if all_files:
+                # Create file info dicts with condition from filename
+                files = []
+                for filepath in all_files:
+                    # Try to extract condition from filename
+                    stem = filepath.stem
+                    parts = stem.replace('-', '_').split('_')
+                    # Use last meaningful part or whole stem as condition
+                    condition = parts[1] if len(parts) >= 2 else stem
+                    files.append({
+                        'path': filepath,
+                        'condition': condition,
+                        'file_format': filepath.suffix[1:]
+                    })
+
+        if files:
+            filepaths = [str(f['path']) for f in files]
+            self._import_files_list(filepaths, files)
+        else:
+            messagebox.showinfo("No Files", "No supported files found in directory.\n\nSupported formats: .csv, .xlsx, .xls, .json")
 
     def _import_files_list(self, filepaths: List[str], file_infos: List[Dict] = None):
         """Import a list of files."""
