@@ -20,7 +20,7 @@ class PlotConfig:
         # Scatter plot settings
         self.show_scatter_dots: bool = True  # Default: show individual points
         self.scatter_alpha: float = 0.6  # Transparency
-        self.scatter_size: int = 6  # Point size (reduced to 1/5 of original 30)
+        self.scatter_size: int = 3  # Point size (reduced to half of 6)
         self.scatter_jitter: float = 0.1  # Jitter to prevent overlap
 
     def set_condition_color(self, condition: str, color: str) -> None:
@@ -125,8 +125,12 @@ class PlotConfig:
         # Keep x-axis ticks
         ax.tick_params(axis='x', which='both', bottom=True, top=False)
 
-        # Keep y-axis ticks
-        ax.tick_params(axis='y', which='both', left=True, right=False)
+        # Keep y-axis ticks with adjusted label positioning
+        ax.tick_params(axis='y', which='both', left=True, right=False, pad=8)
+
+        # Shift y-axis labels: set vertical alignment so top of label is at tick
+        for label in ax.get_yticklabels():
+            label.set_verticalalignment('top')
 
         # Apply plot range if set
         if self.plot_range:

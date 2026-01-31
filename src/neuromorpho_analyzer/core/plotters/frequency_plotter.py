@@ -72,32 +72,12 @@ class FrequencyPlotter:
                 else:
                     values.append(0)
 
-            # Store values for line plot
-            condition_values[condition] = values
-
             # Plot bars
             offset = (i - n_conditions/2 + 0.5) * bar_width
             color = self.config.get_color(condition)
             ax.bar(x + offset, values, bar_width,
                   label=self.config.get_full_name(condition),
                   color=color, edgecolor='black', linewidth=1)
-
-        # Add line plot overlay if there are fewer than 5 conditions
-        if n_conditions < 5:
-            for i, condition in enumerate(conditions):
-                values = condition_values[condition]
-                offset = (i - n_conditions/2 + 0.5) * bar_width
-                color = self.config.get_color(condition)
-                # Plot line connecting bar tops
-                ax.plot(x + offset, values,
-                       color=color,
-                       linewidth=2,
-                       marker='o',
-                       markersize=4,
-                       markerfacecolor=color,
-                       markeredgecolor='black',
-                       markeredgewidth=0.5,
-                       zorder=10)  # Ensure line appears on top
 
         # Set x-axis labels (bin ranges) with increased font size
         bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]
@@ -128,6 +108,105 @@ class FrequencyPlotter:
         # Add significance markers if provided
         if bin_comparisons is not None:
             self._add_bin_significance_markers(ax, bin_comparisons, x)
+
+        plt.tight_layout()
+        return fig
+
+    def create_frequency_line_plot(self, distributions: Dict[str, pd.DataFrame],
+                                   title: str, value_type: str = 'count',
+                                   formula: str = None) -> plt.Figure:
+        """
+        Create line plot for frequency distributions (separate from bar chart).
+
+        Only creates plot if there are fewer than 5 conditions.
+
+        Args:
+            distributions: Dict mapping conditions to frequency DataFrames
+            title: Plot title
+            value_type: 'count' or 'relative'
+            formula: Optional formula to display in y-axis label (in italics)
+
+        Returns:
+            Matplotlib figure or None if too many conditions
+        """
+        # Determine order
+        if self.config.plotting_order:
+            conditions = [c for c in self.config.plotting_order if c in distributions]
+        else:
+            conditions = sorted(distributions.keys())
+
+        n_conditions = len(conditions)
+
+        # Only create line plot if fewer than 5 conditions
+        if n_conditions >= 5:
+            return None
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Get all bins
+        all_bins = set()
+        for dist in distributions.values():
+            all_bins.update(zip(dist['bin_start'], dist['bin_end']))
+        all_bins = sorted(all_bins)
+
+        n_bins = len(all_bins)
+        x = np.arange(n_bins)
+
+        # Plot lines for each condition
+        for condition in conditions:
+            dist = distributions[condition]
+
+            # Extract values for each bin
+            values = []
+            for bin_start, bin_end in all_bins:
+                row = dist[(dist['bin_start'] == bin_start) &
+                          (dist['bin_end'] == bin_end)]
+                if not row.empty:
+                    if value_type == 'count':
+                        values.append(row['count'].values[0])
+                    else:
+                        values.append(row['relative_freq'].values[0])
+                else:
+                    values.append(0)
+
+            color = self.config.get_color(condition)
+            # Plot line with markers
+            ax.plot(x, values,
+                   color=color,
+                   linewidth=2,
+                   marker='o',
+                   markersize=6,
+                   markerfacecolor=color,
+                   markeredgecolor='black',
+                   markeredgewidth=1,
+                   label=self.config.get_full_name(condition))
+
+        # Set x-axis labels (bin ranges) with increased font size
+        bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]
+        ax.set_xticks(x)
+        ax.set_xticklabels(bin_labels, rotation=45, ha='right', fontsize=12)
+
+        # Labels with increased font size
+        ax.set_xlabel('Bin Range', fontsize=14, fontweight='bold')
+        ylabel = 'Count' if value_type == 'count' else 'Relative Frequency'
+        # If formula provided, add it in italics
+        if formula:
+            ylabel_full = f"{ylabel}\n$\\mathit{{{formula}}}$"
+        else:
+            ylabel_full = ylabel
+        ax.set_ylabel(ylabel_full, fontsize=14, fontweight='bold')
+        ax.set_title(title, fontsize=16, fontweight='bold')
+
+        # Legend with increased font size
+        ax.legend(frameon=False, fontsize=12)
+
+        # Apply base styling
+        self.config.apply_base_style(ax)
+
+        # Set y-axis to start at 0
+        current_ylim = ax.get_ylim()
+        ax.set_ylim(0, current_ylim[1])
 
         plt.tight_layout()
         return fig

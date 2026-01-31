@@ -19,7 +19,8 @@ class BoxPlotter:
     def create_boxplot(self, data: Dict[str, pd.Series],
                        title: str, ylabel: str,
                        comparisons: List[Dict],
-                       formula: str = None) -> plt.Figure:
+                       formula: str = None,
+                       yunit: str = None) -> plt.Figure:
         """
         Create box plot with significance brackets and optional scatter overlay.
 
@@ -29,6 +30,7 @@ class BoxPlotter:
             ylabel: Y-axis label
             comparisons: Statistical comparison results
             formula: Optional formula to display in y-axis label (in italics)
+            yunit: Optional unit to display in square brackets after y-axis label
 
         Returns:
             Matplotlib figure
@@ -124,12 +126,16 @@ class BoxPlotter:
             rotation=45, ha='right', fontsize=12
         )
 
+        # Remove x-axis ticks for categorical data
+        ax.tick_params(axis='x', which='both', bottom=False, top=False)
+
         # Set labels with increased font size
-        # If formula provided, add it in italics
+        # Add unit in brackets if provided, then formula in italics if provided
+        ylabel_full = ylabel
+        if yunit:
+            ylabel_full = f"{ylabel} [{yunit}]"
         if formula:
-            ylabel_full = f"{ylabel}\n$\\mathit{{{formula}}}$"
-        else:
-            ylabel_full = ylabel
+            ylabel_full = f"{ylabel_full}\n$\\mathit{{{formula}}}$"
         ax.set_ylabel(ylabel_full, fontsize=14, fontweight='bold')
         ax.set_title(title, fontsize=16, fontweight='bold')
 
@@ -140,10 +146,21 @@ class BoxPlotter:
         # Leave room for significance brackets at top
         y_min = 0
         y_max_data = data_max * 1.05  # 5% padding above data
+
+        # Temporarily set limits to let matplotlib calculate ticks
         ax.set_ylim(y_min, y_max_data)
 
         # Add significance brackets (this will adjust y-limits)
         self.annotator.add_brackets(ax, comparisons, position_map)
+
+        # Round y_max to nearest tick value
+        yticks = ax.get_yticks()
+        # Find the first tick >= current y_max
+        current_ymax = ax.get_ylim()[1]
+        for tick in yticks:
+            if tick >= current_ymax:
+                ax.set_ylim(y_min, tick)
+                break
 
         plt.tight_layout()
         return fig
