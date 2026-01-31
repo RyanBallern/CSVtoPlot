@@ -18,7 +18,8 @@ class BarPlotter:
 
     def create_barplot(self, data: Dict[str, pd.Series],
                        title: str, ylabel: str,
-                       comparisons: List[Dict]) -> plt.Figure:
+                       comparisons: List[Dict],
+                       formula: str = None) -> plt.Figure:
         """
         Create bar plot with significance brackets and optional scatter overlay.
 
@@ -27,6 +28,7 @@ class BarPlotter:
             title: Plot title
             ylabel: Y-axis label
             comparisons: Statistical comparison results
+            formula: Optional formula to display in y-axis label (in italics)
 
         Returns:
             Matplotlib figure
@@ -69,9 +71,14 @@ class BarPlotter:
             color = self.config.get_color(condition)
             bar.set_facecolor(color)
 
-        # Add SEM error bars (both directions)
+        # Calculate error bar cap size (half the bar width)
+        # Bar width is 0.57 in data units
+        capsize = (bar_width / 2) * 72 / (len(conditions) * 0.5)  # Dynamic based on conditions
+        capsize = max(capsize, 3)  # Minimum 3 points
+
+        # Add SEM error bars (both directions) with calculated capsize
         ax.errorbar(positions, means, yerr=sems, fmt='none', ecolor='black',
-                   elinewidth=2, capsize=5, capthick=2)
+                   elinewidth=2, capsize=capsize, capthick=2)
 
         # Add scatter dots if enabled
         if self.config.show_scatter_dots:
@@ -101,7 +108,12 @@ class BarPlotter:
         )
 
         # Set labels with increased font size
-        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+        # If formula provided, add it in italics
+        if formula:
+            ylabel_full = f"{ylabel}\n$\\mathit{{{formula}}}$"
+        else:
+            ylabel_full = ylabel
+        ax.set_ylabel(ylabel_full, fontsize=14, fontweight='bold')
         ax.set_title(title, fontsize=16, fontweight='bold')
 
         # Apply base styling

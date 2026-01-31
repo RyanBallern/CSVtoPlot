@@ -18,7 +18,8 @@ class BoxPlotter:
 
     def create_boxplot(self, data: Dict[str, pd.Series],
                        title: str, ylabel: str,
-                       comparisons: List[Dict]) -> plt.Figure:
+                       comparisons: List[Dict],
+                       formula: str = None) -> plt.Figure:
         """
         Create box plot with significance brackets and optional scatter overlay.
 
@@ -27,6 +28,7 @@ class BoxPlotter:
             title: Plot title
             ylabel: Y-axis label
             comparisons: Statistical comparison results
+            formula: Optional formula to display in y-axis label (in italics)
 
         Returns:
             Matplotlib figure
@@ -72,14 +74,23 @@ class BoxPlotter:
             patch.set_edgecolor('black')
             patch.set_linewidth(1.5)
 
-        # Add SEM error bars
+        # Calculate error bar cap size (half the box width)
+        # Box width is 0.57 in data units, we need capsize in points
+        # Convert: data units -> inches -> points
+        # Approximate: capsize should be ~28.5% of space between ticks
+        box_width_data = 0.57
+        # Rough conversion based on typical axes dimensions
+        capsize = (box_width_data / 2) * 72 / (len(conditions) * 0.5)  # Dynamic based on conditions
+        capsize = max(capsize, 3)  # Minimum 3 points
+
+        # Add SEM error bars with calculated capsize
         for i, condition in enumerate(conditions):
             series = data[condition]
             mean = series.mean()
             sem = series.sem()
 
             ax.errorbar(i, mean, yerr=sem, fmt='none', ecolor='black',
-                       elinewidth=2, capsize=5, capthick=2)
+                       elinewidth=2, capsize=capsize, capthick=2)
 
         # Add scatter dots if enabled
         if self.config.show_scatter_dots:
@@ -109,7 +120,12 @@ class BoxPlotter:
         )
 
         # Set labels with increased font size
-        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+        # If formula provided, add it in italics
+        if formula:
+            ylabel_full = f"{ylabel}\n$\\mathit{{{formula}}}$"
+        else:
+            ylabel_full = ylabel
+        ax.set_ylabel(ylabel_full, fontsize=14, fontweight='bold')
         ax.set_title(title, fontsize=16, fontweight='bold')
 
         # Apply base styling

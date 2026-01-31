@@ -16,7 +16,8 @@ class FrequencyPlotter:
 
     def create_frequency_plot(self, distributions: Dict[str, pd.DataFrame],
                             title: str, value_type: str = 'count',
-                            bin_comparisons: Optional[pd.DataFrame] = None) -> plt.Figure:
+                            bin_comparisons: Optional[pd.DataFrame] = None,
+                            formula: str = None) -> plt.Figure:
         """
         Create frequency distribution plot.
 
@@ -25,6 +26,7 @@ class FrequencyPlotter:
             title: Plot title
             value_type: 'count' or 'relative'
             bin_comparisons: DataFrame with per-bin significance results
+            formula: Optional formula to display in y-axis label (in italics)
 
         Returns:
             Matplotlib figure
@@ -82,7 +84,12 @@ class FrequencyPlotter:
         # Labels with increased font size
         ax.set_xlabel('Bin Range', fontsize=14, fontweight='bold')
         ylabel = 'Count' if value_type == 'count' else 'Relative Frequency'
-        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+        # If formula provided, add it in italics
+        if formula:
+            ylabel_full = f"{ylabel}\n$\\mathit{{{formula}}}$"
+        else:
+            ylabel_full = ylabel
+        ax.set_ylabel(ylabel_full, fontsize=14, fontweight='bold')
         ax.set_title(title, fontsize=16, fontweight='bold')
 
         # Legend with increased font size
