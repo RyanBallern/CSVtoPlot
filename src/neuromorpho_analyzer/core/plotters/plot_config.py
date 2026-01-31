@@ -118,6 +118,10 @@ class PlotConfig:
         ax.spines['bottom'].set_visible(True)  # Show x-axis
         ax.spines['left'].set_visible(True)
 
+        # Increase axis thickness by 0.5 (default is ~0.8, new is 1.3)
+        ax.spines['bottom'].set_linewidth(1.3)
+        ax.spines['left'].set_linewidth(1.3)
+
         # Keep x-axis ticks
         ax.tick_params(axis='x', which='both', bottom=True, top=False)
 
