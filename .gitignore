@@ -44,3 +44,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Guide reference files (from main branch)
+CSVtoPlot_ANALYZER_COMPLETE_GUIDE.zip
+Part_*.md
+README_GUIDE_PARTS.md
