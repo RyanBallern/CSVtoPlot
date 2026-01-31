@@ -2,6 +2,27 @@
 
 A comprehensive Python-based tool for neuromorphological data analysis.
 
+## Quick Start
+
+```python
+from neuromorpho_analyzer.core.importers import UnifiedImporter
+from neuromorpho_analyzer.core.database import SQLiteDatabase
+
+# Import a data file (auto-detects CSV, Excel, JSON)
+data = UnifiedImporter.import_file('mydata.csv')
+
+# Store in database
+with SQLiteDatabase('mydata.db') as db:
+    assay_id = db.insert_assay("My Experiment")
+    db.insert_measurements(assay_id, data, condition='Control')
+
+    # Retrieve and analyze
+    stored_data = db.get_measurements(assay_id)
+    print(f"Stored {len(stored_data)} measurements")
+```
+
+See [USAGE_GUIDE.md](USAGE_GUIDE.md) for detailed tutorials and [examples/](examples/) for complete working scripts.
+
 ## Project Status
 
 **Version:** 0.1.0-dev
@@ -331,6 +352,7 @@ CSVtoPlot/
 │   ├── 003_Treatment_010T.json
 │   ├── 004_Control_002.xls
 │   └── 005_Invalid.txt
+│
 ├── requirements.txt
 ├── README.md
 ├── USAGE_GUIDE.md
@@ -344,6 +366,22 @@ CSVtoPlot/
 ├── test_integration.py
 └── create_test_excel_files.py
 ```
+
+### Documentation
+
+- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete usage guide with tutorials
+- **[examples/README.md](examples/README.md)** - Examples documentation
+- **README.md** (this file) - API reference and project overview
+
+### Integration Test
+
+Run the comprehensive integration test to verify the complete pipeline:
+
+```bash
+python test_integration.py
+```
+
+This tests the full workflow from file scanning through database storage.
 
 ## Next Steps
 
