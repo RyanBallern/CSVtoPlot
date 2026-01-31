@@ -20,7 +20,7 @@ class PlotConfig:
         # Scatter plot settings
         self.show_scatter_dots: bool = True  # Default: show individual points
         self.scatter_alpha: float = 0.6  # Transparency
-        self.scatter_size: int = 30  # Point size
+        self.scatter_size: int = 6  # Point size (reduced to 1/5 of original 30)
         self.scatter_jitter: float = 0.1  # Jitter to prevent overlap
 
     def set_condition_color(self, condition: str, color: str) -> None:

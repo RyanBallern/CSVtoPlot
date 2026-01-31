@@ -112,10 +112,15 @@ class BoxPlotter:
                           linewidths=0.5,
                           zorder=3)  # Ensure dots appear on top
 
-        # Set x-axis labels (use full names) - BEFORE setting n-numbers
+        # Set x-axis labels with n-numbers below condition names
         ax.set_xticks(positions)
+        # Create labels with condition name and n-number on separate lines
+        labels_with_n = [
+            f"{self.config.get_full_name(c)}\nn={len(data[c])}"
+            for c in conditions
+        ]
         ax.set_xticklabels(
-            [self.config.get_full_name(c) for c in conditions],
+            labels_with_n,
             rotation=45, ha='right', fontsize=12
         )
 
@@ -139,16 +144,6 @@ class BoxPlotter:
 
         # Add significance brackets (this will adjust y-limits)
         self.annotator.add_brackets(ax, comparisons, position_map)
-
-        # Add n-numbers below x-axis (after y-limits are set)
-        y_lim = ax.get_ylim()
-        y_range = y_lim[1] - y_lim[0]
-        n_offset = y_lim[0] - (0.08 * y_range)  # Below the axis
-
-        for i, condition in enumerate(conditions):
-            n = len(data[condition])
-            ax.text(i, n_offset, f'n={n}',
-                   ha='center', va='top', fontsize=11)
 
         plt.tight_layout()
         return fig

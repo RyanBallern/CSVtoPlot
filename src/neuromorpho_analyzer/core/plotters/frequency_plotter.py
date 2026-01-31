@@ -53,6 +53,9 @@ class FrequencyPlotter:
 
         x = np.arange(n_bins)
 
+        # Store values for optional line plot
+        condition_values = {}
+
         for i, condition in enumerate(conditions):
             dist = distributions[condition]
 
@@ -69,12 +72,32 @@ class FrequencyPlotter:
                 else:
                     values.append(0)
 
+            # Store values for line plot
+            condition_values[condition] = values
+
             # Plot bars
             offset = (i - n_conditions/2 + 0.5) * bar_width
             color = self.config.get_color(condition)
             ax.bar(x + offset, values, bar_width,
                   label=self.config.get_full_name(condition),
                   color=color, edgecolor='black', linewidth=1)
+
+        # Add line plot overlay if there are fewer than 5 conditions
+        if n_conditions < 5:
+            for i, condition in enumerate(conditions):
+                values = condition_values[condition]
+                offset = (i - n_conditions/2 + 0.5) * bar_width
+                color = self.config.get_color(condition)
+                # Plot line connecting bar tops
+                ax.plot(x + offset, values,
+                       color=color,
+                       linewidth=2,
+                       marker='o',
+                       markersize=4,
+                       markerfacecolor=color,
+                       markeredgecolor='black',
+                       markeredgewidth=0.5,
+                       zorder=10)  # Ensure line appears on top
 
         # Set x-axis labels (bin ranges) with increased font size
         bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]

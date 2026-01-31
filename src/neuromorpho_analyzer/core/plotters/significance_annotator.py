@@ -59,10 +59,10 @@ class SignificanceAnnotator:
             # Draw bracket
             self._draw_bracket(ax, x1, x2, bracket_height, y_range * 0.015)
 
-            # Add stars with increased font size
+            # Add stars with increased font size (reduced distance by half)
             stars = self.get_significance_stars(p_value)
             mid_x = (x1 + x2) / 2
-            ax.text(mid_x, bracket_height + y_range * 0.015, stars,
+            ax.text(mid_x, bracket_height + y_range * 0.0075, stars,
                    ha='center', va='bottom', fontsize=14, fontweight='bold')
 
             bracket_level += 1
