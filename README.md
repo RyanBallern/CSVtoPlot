@@ -144,9 +144,18 @@ Comprehensive statistical analysis engine with automatic test selection:
   - Cohen's d effect size
   - Mean differences and standard deviations
 - **Mann-Whitney U**: Non-parametric alternative for 2 groups
-- **ANOVA**: One-way ANOVA with eta-squared effect size
+- **ANOVA**:
+  - One-way ANOVA with eta-squared effect size
+  - Two-way ANOVA for two independent factors (e.g., Condition × Distance)
+  - Interaction effects and main effects
 - **Kruskal-Wallis**: Non-parametric alternative for 3+ groups
+- **Friedman Test**: Non-parametric repeated measures/matched groups
 - **Post-hoc Analysis**: Tukey HSD for pairwise comparisons after ANOVA
+- **Multi-Parameter Comparison**:
+  - Compare multiple parameters across conditions simultaneously
+  - Perfect for Sholl analysis (multiple distances)
+  - Branch depth analysis (multiple depth levels)
+  - Frequency distributions (multiple bins)
 - **Comprehensive Results**: Detailed statistics, p-values, effect sizes
 - **Formatted Output**: Human-readable summary reports
 
@@ -252,6 +261,19 @@ This will run 8 comprehensive tests covering:
 - Automatic test selection (2 groups)
 - Automatic test selection (3+ groups)
 
+### Test Two-Way ANOVA and Multi-Parameter Analysis
+
+Run the test script:
+```bash
+python test_two_way_anova.py
+```
+
+This will run 4 comprehensive tests covering:
+- Two-way ANOVA with interaction effects (Condition × Distance)
+- Friedman test (non-parametric repeated measures)
+- Multiple parameter comparison (Sholl analysis with 10 distances)
+- Distance comparison wrapper (branch depth analysis)
+
 ### Sample Test Files
 
 Located in `test_data/`:
@@ -318,6 +340,7 @@ CSVtoPlot/
 ├── test_importers.py
 ├── test_database.py
 ├── test_statistics.py
+├── test_two_way_anova.py
 ├── test_integration.py
 └── create_test_excel_files.py
 ```

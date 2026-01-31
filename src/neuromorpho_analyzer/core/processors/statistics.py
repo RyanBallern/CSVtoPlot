@@ -440,6 +440,226 @@ class StatisticsEngine:
 
         return result
 
+    def two_way_anova(
+        self,
+        data: pd.DataFrame,
+        value_col: str,
+        factor1_col: str,
+        factor2_col: str
+    ) -> Dict[str, Any]:
+        """
+        Perform two-way ANOVA with two independent factors.
+
+        Args:
+            data: DataFrame with data
+            value_col: Column name with values
+            factor1_col: First factor column (e.g., 'Condition')
+            factor2_col: Second factor column (e.g., 'Distance' or 'Depth')
+
+        Returns:
+            Dictionary with ANOVA results including main effects and interaction
+        """
+        try:
+            import statsmodels.api as sm
+            from statsmodels.formula.api import ols
+        except ImportError:
+            raise ImportError("statsmodels required for two-way ANOVA. Install with: pip install statsmodels")
+
+        # Remove NaN values
+        data_clean = data[[value_col, factor1_col, factor2_col]].dropna()
+
+        # Create formula for ANOVA
+        # C() treats columns as categorical
+        formula = f'{value_col} ~ C({factor1_col}) + C({factor2_col}) + C({factor1_col}):C({factor2_col})'
+
+        # Fit the model
+        model = ols(formula, data=data_clean).fit()
+
+        # Perform ANOVA
+        anova_table = sm.stats.anova_lm(model, typ=2)
+
+        # Extract results
+        results = {
+            'formula': formula,
+            'anova_table': anova_table,
+            'model': model,
+            'effects': {}
+        }
+
+        # Parse ANOVA table
+        for effect_name in anova_table.index:
+            if effect_name != 'Residual':
+                f_stat = float(anova_table.loc[effect_name, 'F'])
+                p_value = float(anova_table.loc[effect_name, 'PR(>F)'])
+                df = float(anova_table.loc[effect_name, 'df'])
+
+                # Determine effect type
+                if ':' in effect_name:
+                    effect_type = 'interaction'
+                else:
+                    effect_type = 'main'
+
+                results['effects'][effect_name] = {
+                    'type': effect_type,
+                    'F': f_stat,
+                    'p_value': p_value,
+                    'df': df,
+                    'significant': p_value < self.alpha
+                }
+
+        return results
+
+    def friedman_test(
+        self,
+        data: pd.DataFrame,
+        value_col: str,
+        group_col: str,
+        subject_col: str
+    ) -> StatisticalTest:
+        """
+        Perform Friedman test (non-parametric repeated measures/two-way ANOVA).
+
+        Used when you have repeated measurements or matched groups.
+        For example: multiple parameters measured for each sample.
+
+        Args:
+            data: DataFrame with data
+            value_col: Column name with values
+            group_col: Column with group/condition labels
+            subject_col: Column identifying matched subjects/samples
+
+        Returns:
+            StatisticalTest result
+        """
+        # Pivot data to get samples x groups matrix
+        pivoted = data.pivot(index=subject_col, columns=group_col, values=value_col)
+
+        # Remove rows with any NaN
+        pivoted_clean = pivoted.dropna()
+
+        # Perform Friedman test
+        statistic, p_value = stats.friedmanchisquare(*[pivoted_clean[col] for col in pivoted_clean.columns])
+
+        return StatisticalTest(
+            test_name="Friedman test",
+            statistic=float(statistic),
+            p_value=float(p_value),
+            significant=p_value < self.alpha,
+            alpha=self.alpha,
+            additional_info={
+                'num_groups': len(pivoted_clean.columns),
+                'num_subjects': len(pivoted_clean),
+                'groups': list(pivoted_clean.columns)
+            }
+        )
+
+    def compare_multiple_parameters(
+        self,
+        data: pd.DataFrame,
+        parameter_cols: List[str],
+        group_col: str,
+        parametric: Optional[bool] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Compare multiple parameters across conditions simultaneously.
+
+        Useful for Sholl analysis, branch depth, or frequency distributions
+        where you want to compare multiple measurements (columns) across
+        conditions (rows).
+
+        Args:
+            data: DataFrame with data
+            parameter_cols: List of column names to compare (e.g., distances/depths)
+            group_col: Column with group/condition labels
+            parametric: Force parametric (True) or non-parametric (False).
+                       If None, test normality for each parameter
+
+        Returns:
+            Dictionary with results for each parameter
+        """
+        all_results = {}
+
+        print(f"Comparing {len(parameter_cols)} parameters across conditions...")
+        print(f"Parameters: {parameter_cols[:5]}{'...' if len(parameter_cols) > 5 else ''}")
+
+        for param in parameter_cols:
+            print(f"\nAnalyzing: {param}")
+
+            # Filter to only this parameter and group column
+            param_data = data[[param, group_col]].dropna()
+
+            # Skip if no data
+            if len(param_data) == 0:
+                print(f"  ⚠ No data for {param}, skipping")
+                continue
+
+            # Perform auto_compare for this parameter
+            try:
+                result = self.auto_compare(
+                    param_data,
+                    value_col=param,
+                    group_col=group_col,
+                    parametric=parametric
+                )
+                all_results[param] = result
+
+            except Exception as e:
+                print(f"  ✗ Error analyzing {param}: {e}")
+                continue
+
+        # Summary
+        significant_params = [
+            param for param, result in all_results.items()
+            if result['main_test'].significant
+        ]
+
+        print(f"\n" + "=" * 70)
+        print(f"Multi-Parameter Comparison Summary")
+        print("=" * 70)
+        print(f"Total parameters tested: {len(all_results)}")
+        print(f"Significant differences: {len(significant_params)}")
+
+        if significant_params:
+            print(f"\nSignificant parameters:")
+            for param in significant_params:
+                p_val = all_results[param]['main_test'].p_value
+                print(f"  {param}: p={p_val:.4f}")
+
+        return all_results
+
+    def compare_across_distances(
+        self,
+        data: pd.DataFrame,
+        distance_cols: List[str],
+        condition_col: str,
+        parametric: Optional[bool] = None
+    ) -> Dict[str, Any]:
+        """
+        Compare values across distances/depths for Sholl or branch analysis.
+
+        Convenience wrapper for compare_multiple_parameters specifically
+        for distance/depth-based analyses.
+
+        Args:
+            data: DataFrame with Sholl or branch data
+            distance_cols: List of distance/depth column names
+            condition_col: Column with condition labels
+            parametric: Force parametric/non-parametric or auto-detect
+
+        Returns:
+            Dictionary with results for each distance
+        """
+        print("=" * 70)
+        print("Distance/Depth Analysis")
+        print("=" * 70)
+
+        return self.compare_multiple_parameters(
+            data,
+            parameter_cols=distance_cols,
+            group_col=condition_col,
+            parametric=parametric
+        )
+
     def format_results_summary(self, results: Dict[str, Any]) -> str:
         """
         Format statistical results as a readable summary.
