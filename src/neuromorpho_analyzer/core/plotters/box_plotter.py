@@ -37,19 +37,33 @@ class BoxPlotter:
         else:
             conditions = sorted(data.keys())
 
+        # Calculate figure size: 1 cm = 0.3937 inches per condition (max)
+        cm_per_condition = 1.0
+        inches_per_condition = cm_per_condition * 0.3937
+        width = max(len(conditions) * inches_per_condition + 2, 4)  # Min 4 inches
+        height = 6
+
         # Create figure
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(width, height))
 
         # Prepare data for plotting
         plot_data = [data[cond] for cond in conditions]
         positions = list(range(len(conditions)))
         position_map = {cond: i for i, cond in enumerate(conditions)}
 
+        # Calculate data range for y-axis
+        all_values = np.concatenate([d.values for d in data.values()])
+        data_min = np.min(all_values)
+        data_max = np.max(all_values)
+
+        # Box width: spacing = 0.75 * width, so width + 0.75*width = 1.0 → width = 0.571
+        box_width = 0.57
+
         # Create box plot
-        bp = ax.boxplot(plot_data, positions=positions, widths=0.6,
+        bp = ax.boxplot(plot_data, positions=positions, widths=box_width,
                        patch_artist=True, showmeans=True,
                        meanprops=dict(marker='D', markerfacecolor='red',
-                                    markeredgecolor='red', markersize=6))
+                                    markeredgecolor='red', markersize=7))
 
         # Color boxes
         for patch, condition in zip(bp['boxes'], conditions):
@@ -87,28 +101,38 @@ class BoxPlotter:
                           linewidths=0.5,
                           zorder=3)  # Ensure dots appear on top
 
-        # Add n-numbers
-        for i, condition in enumerate(conditions):
-            n = len(data[condition])
-            ax.text(i, ax.get_ylim()[0], f'n={n}',
-                   ha='center', va='top', fontsize=10)
-
-        # Set x-axis labels (use full names)
+        # Set x-axis labels (use full names) - BEFORE setting n-numbers
         ax.set_xticks(positions)
         ax.set_xticklabels(
             [self.config.get_full_name(c) for c in conditions],
-            rotation=45, ha='right'
+            rotation=45, ha='right', fontsize=12
         )
 
-        # Set labels
-        ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
-        ax.set_title(title, fontsize=14, fontweight='bold')
+        # Set labels with increased font size
+        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+        ax.set_title(title, fontsize=16, fontweight='bold')
 
         # Apply base styling
         self.config.apply_base_style(ax)
 
-        # Add significance brackets
+        # Set y-axis to start at 0 and fit data with minimal padding
+        # Leave room for significance brackets at top
+        y_min = 0
+        y_max_data = data_max * 1.05  # 5% padding above data
+        ax.set_ylim(y_min, y_max_data)
+
+        # Add significance brackets (this will adjust y-limits)
         self.annotator.add_brackets(ax, comparisons, position_map)
+
+        # Add n-numbers below x-axis (after y-limits are set)
+        y_lim = ax.get_ylim()
+        y_range = y_lim[1] - y_lim[0]
+        n_offset = y_lim[0] - (0.08 * y_range)  # Below the axis
+
+        for i, condition in enumerate(conditions):
+            n = len(data[condition])
+            ax.text(i, n_offset, f'n={n}',
+                   ha='center', va='top', fontsize=11)
 
         plt.tight_layout()
         return fig

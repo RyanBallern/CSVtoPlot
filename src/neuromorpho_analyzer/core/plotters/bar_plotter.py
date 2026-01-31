@@ -37,8 +37,14 @@ class BarPlotter:
         else:
             conditions = sorted(data.keys())
 
+        # Calculate figure size: 1 cm = 0.3937 inches per condition (max)
+        cm_per_condition = 1.0
+        inches_per_condition = cm_per_condition * 0.3937
+        width = max(len(conditions) * inches_per_condition + 2, 4)  # Min 4 inches
+        height = 6
+
         # Create figure
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(width, height))
 
         # Calculate means and SEMs
         means = [data[cond].mean() for cond in conditions]
@@ -48,8 +54,15 @@ class BarPlotter:
         positions = np.arange(len(conditions))
         position_map = {cond: i for i, cond in enumerate(conditions)}
 
+        # Calculate data range
+        all_values = np.concatenate([d.values for d in data.values()])
+        data_max = np.max(all_values)
+
+        # Bar width: spacing = 0.75 * width, so width + 0.75*width = 1.0 → width = 0.571
+        bar_width = 0.57
+
         # Create bars
-        bars = ax.bar(positions, means, width=0.6, edgecolor='black', linewidth=1.5)
+        bars = ax.bar(positions, means, width=bar_width, edgecolor='black', linewidth=1.5)
 
         # Color bars
         for bar, condition in zip(bars, conditions):
@@ -80,28 +93,35 @@ class BarPlotter:
                           linewidths=1,
                           zorder=3)
 
-        # Add n-numbers
-        for i, condition in enumerate(conditions):
-            n = len(data[condition])
-            ax.text(i, ax.get_ylim()[0], f'n={n}',
-                   ha='center', va='top', fontsize=10)
-
-        # Set x-axis labels
+        # Set x-axis labels (use full names) with increased font size
         ax.set_xticks(positions)
         ax.set_xticklabels(
             [self.config.get_full_name(c) for c in conditions],
-            rotation=45, ha='right'
+            rotation=45, ha='right', fontsize=12
         )
 
-        # Set labels
-        ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
-        ax.set_title(title, fontsize=14, fontweight='bold')
+        # Set labels with increased font size
+        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+        ax.set_title(title, fontsize=16, fontweight='bold')
 
         # Apply base styling
         self.config.apply_base_style(ax)
 
-        # Add significance brackets
+        # Set y-axis to start at 0 and fit data with minimal padding
+        y_min = 0
+        y_max_data = data_max * 1.05  # 5% padding above data
+        ax.set_ylim(y_min, y_max_data)
+
+        # Add significance brackets (this will adjust y-limits)
         self.annotator.add_brackets(ax, comparisons, position_map)
+
+        # Add n-numbers at the bottom of each bar (inside or just above x-axis)
+        for i, condition in enumerate(conditions):
+            n = len(data[condition])
+            # Place n at a small offset above y=0
+            y_text = y_min + (ax.get_ylim()[1] - y_min) * 0.02
+            ax.text(i, y_text, f'n={n}',
+                   ha='center', va='bottom', fontsize=11, fontweight='bold')
 
         plt.tight_layout()
         return fig

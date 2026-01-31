@@ -53,23 +53,23 @@ class SignificanceAnnotator:
             x1 = positions[group1]
             x2 = positions[group2]
 
-            # Calculate bracket height
-            bracket_height = y_max + (bracket_level * 0.05 * y_range) + (0.02 * y_range)
+            # Calculate bracket height with better spacing
+            bracket_height = y_max + (bracket_level * 0.07 * y_range) + (0.03 * y_range)
 
             # Draw bracket
-            self._draw_bracket(ax, x1, x2, bracket_height, y_range * 0.01)
+            self._draw_bracket(ax, x1, x2, bracket_height, y_range * 0.015)
 
-            # Add stars
+            # Add stars with increased font size
             stars = self.get_significance_stars(p_value)
             mid_x = (x1 + x2) / 2
-            ax.text(mid_x, bracket_height + y_range * 0.01, stars,
-                   ha='center', va='bottom', fontsize=12, fontweight='bold')
+            ax.text(mid_x, bracket_height + y_range * 0.015, stars,
+                   ha='center', va='bottom', fontsize=14, fontweight='bold')
 
             bracket_level += 1
 
-        # Adjust y-axis to accommodate brackets
+        # Adjust y-axis to accommodate brackets with more space
         if bracket_level > 0:
-            new_y_max = y_max + (bracket_level * 0.05 * y_range) + (0.05 * y_range)
+            new_y_max = y_max + (bracket_level * 0.07 * y_range) + (0.08 * y_range)
             ax.set_ylim(y_min, new_y_max)
 
     def _draw_bracket(self, ax: plt.Axes, x1: float, x2: float,

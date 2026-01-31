@@ -74,22 +74,26 @@ class FrequencyPlotter:
                   label=self.config.get_full_name(condition),
                   color=color, edgecolor='black', linewidth=1)
 
-        # Set x-axis labels (bin ranges)
+        # Set x-axis labels (bin ranges) with increased font size
         bin_labels = [f'{start:.0f}-{end:.0f}' for start, end in all_bins]
         ax.set_xticks(x)
-        ax.set_xticklabels(bin_labels, rotation=45, ha='right')
+        ax.set_xticklabels(bin_labels, rotation=45, ha='right', fontsize=12)
 
-        # Labels
-        ax.set_xlabel('Bin Range', fontsize=12, fontweight='bold')
+        # Labels with increased font size
+        ax.set_xlabel('Bin Range', fontsize=14, fontweight='bold')
         ylabel = 'Count' if value_type == 'count' else 'Relative Frequency'
-        ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
-        ax.set_title(title, fontsize=14, fontweight='bold')
+        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+        ax.set_title(title, fontsize=16, fontweight='bold')
 
-        # Legend
-        ax.legend(frameon=False)
+        # Legend with increased font size
+        ax.legend(frameon=False, fontsize=12)
 
         # Apply base styling
         self.config.apply_base_style(ax)
+
+        # Set y-axis to start at 0
+        current_ylim = ax.get_ylim()
+        ax.set_ylim(0, current_ylim[1])
 
         # Add significance markers if provided
         if bin_comparisons is not None:
@@ -109,4 +113,4 @@ class FrequencyPlotter:
                 stars = self.annotator.get_significance_stars(row['p_value'])
                 if stars:
                     ax.text(bin_positions[idx], y_max * 0.95, stars,
-                           ha='center', va='top', fontsize=10, fontweight='bold')
+                           ha='center', va='top', fontsize=14, fontweight='bold')

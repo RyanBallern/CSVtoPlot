@@ -115,11 +115,11 @@ class PlotConfig:
         # Remove frame
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
+        ax.spines['bottom'].set_visible(True)  # Show x-axis
         ax.spines['left'].set_visible(True)
 
-        # Remove x-axis ticks
-        ax.tick_params(axis='x', which='both', bottom=False, top=False)
+        # Keep x-axis ticks
+        ax.tick_params(axis='x', which='both', bottom=True, top=False)
 
         # Keep y-axis ticks
         ax.tick_params(axis='y', which='both', left=True, right=False)
