@@ -90,8 +90,8 @@ def test_statistics_table_export(db, assay_id):
     print("Testing StatisticsTableExporter")
     print("="*60)
 
-    # Create output directory
-    output_dir = Path.home() / 'Documents' / 'PythonScripts' / 'CSVtoPlot' / 'CSVtoPlot' / 'demo_output'
+    # Create output directory relative to current working directory
+    output_dir = Path.cwd() / 'demo_output'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get data for one parameter
@@ -133,8 +133,8 @@ def test_excel_export(db, assay_id):
     print("Testing ExcelExporter")
     print("="*60)
 
-    # Create output directory
-    output_dir = Path.home() / 'Documents' / 'PythonScripts' / 'CSVtoPlot' / 'CSVtoPlot' / 'demo_output'
+    # Create output directory relative to current working directory
+    output_dir = Path.cwd() / 'demo_output'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create parameter selector and select all parameters
@@ -173,8 +173,8 @@ def test_graphpad_export(db, assay_id):
     print("Testing GraphPadExporter")
     print("="*60)
 
-    # Create output directory
-    output_dir = Path.home() / 'Documents' / 'PythonScripts' / 'CSVtoPlot' / 'CSVtoPlot' / 'demo_output'
+    # Create output directory relative to current working directory
+    output_dir = Path.cwd() / 'demo_output'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create parameter selector and select all parameters
@@ -276,8 +276,8 @@ def main():
         print("All export tests completed successfully!")
         print("="*60)
 
-        output_dir = Path.home() / 'Documents' / 'PythonScripts' / 'CSVtoPlot' / 'CSVtoPlot' / 'demo_output'
-        print(f"\nOutput files saved to: {output_dir}")
+        output_dir = Path.cwd() / 'demo_output'
+        print(f"\nOutput files saved to: {output_dir.absolute()}")
         print("\nGenerated files:")
         for file in sorted(output_dir.glob('*')):
             if file.is_file() and file.stat().st_mtime > (file.stat().st_mtime - 60):
